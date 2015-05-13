@@ -20,11 +20,9 @@ class Dispatcher
     currentState        = transition.fromState
     nextStateChain      = nextState?.getChain() or []
     currentStateChain   = currentState?.getChain() or []
-    route               = transition.route
     enterStates         = []
     leaveStates         = []
     ignoreStates        = []
-    transition.toParams = nextState?.extractParams(route) or {}
 
     for state in currentStateChain
       if state in nextStateChain

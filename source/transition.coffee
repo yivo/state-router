@@ -6,9 +6,10 @@ class Transition
   @include StrictParameters
 
   @param 'fromState'
-  @param 'toState', required: yes
-  @param 'route',   required: yes
-  @params 'fromParams'
+  @param 'toState',  required: yes
+  @param 'fromParams'
+  @param 'toParams', alias: 'params'
+  @param 'route',    required: yes
 
   constructor: (options) ->
     @mergeParams(options)
