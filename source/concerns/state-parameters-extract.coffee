@@ -1,7 +1,7 @@
 StateParametersExtract =
 
   extractParams: (route) ->
-    helper = Router.paramHelper
+    helper = Router.loadParamHelper()
     match  = @pattern.match(route)
     params = __version: helper.hashCode(route)
 
@@ -16,7 +16,7 @@ StateParametersExtract =
 
   # TODO Refactor name
   extractBeginningParams: (route) ->
-    helper = Router.paramHelper
+    helper = Router.loadParamHelper()
     match  = @pattern.matchBeginning(route)
     params =
       __version: if match? then helper.hashCode(match[0])
@@ -30,4 +30,4 @@ StateParametersExtract =
     params
 
   extractQueryString: (route) ->
-    XRegExp.exec(route, Router.patternCompiler.reQueryString)?.query
+    XRegExp.exec(route, Router.loadPatternCompiler().reQueryString)?.query

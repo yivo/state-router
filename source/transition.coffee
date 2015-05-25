@@ -1,6 +1,7 @@
 Router.createTransition = (options) ->
   new Transition(options)
 
+# TODO Retry transition
 class Transition
 
   @include StrictParameters

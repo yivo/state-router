@@ -13,12 +13,12 @@ class State
   @param 'pattern',    required: yes
   @param 'base'
   @param 'assembler',  as: '_customAssembler'
-  @param 'controller', as: '_controllerName'
+  @param 'controller', as: '_controller'
   @param 'defaults',   as: '_defaultParams'
   @param '404',        as: '_404'
   @param 'abstract',   as: '_abstract'
 
-  {bindMethod, extend} = _
+  {bindMethod, isFunction, extend} = _
 
   constructor: (options) ->
     @mergeParams(options)
@@ -29,8 +29,16 @@ class State
   getName: ->
     @_name
 
+  hasComputedControllerName: ->
+    isFunction(@_controller)
+
   getControllerName: ->
-    @_controllerName
+    unless @hasComputedControllerName()
+      @_controller
+
+  computeControllerName: ->
+    if @hasComputedControllerName()
+      @_controller.apply(this, arguments)
 
   isAbstract: ->
     !!@_abstract

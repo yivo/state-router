@@ -41,7 +41,7 @@ class History
       setInterval(@check, @interval)
 
     if @options.load
-      @load({@route})
+      @load {@route}
 
   check: (e) ->
     route = @getRoute()
@@ -52,20 +52,21 @@ class History
     fixed = @_removeRouteAmbiguity(route)
 
     if route isnt fixed
-      @navigate(fixed, replace: yes, trigger: no)
-      route = fixed
+      return @navigate(fixed, replace: yes, load: yes)
 
     @route     = route
     fromState  = Router.currentState
-    fromParams = Router.lastTransition?.toParams
-    toState    = Router.stateMatcher.match(route)
+    fromParams = Router.previousTransition?.toParams
+    toState    = Router.loadStateMatcher().match(route)
     toParams   = toState?.extractParams(route) or {}
     transition = Router.createTransition {fromState, fromParams, toState, toParams, route}
     result     = Router.loadDispatcher().dispatch(transition)
 
     if result
-      Router.currentState   = toState
-      Router.lastTransition = transition
+      Router.previousState      = Router.currentState
+      Router.previousTransition = Router.currentTransition
+      Router.currentState       = toState
+      Router.currentTransition  = transition
     result
 
   navigate: (route, options) ->
@@ -82,9 +83,7 @@ class History
       @route = route
 
       if @pushStateBased
-        method = if options.replace then 'replaceState' else 'pushState'
-        @history[method]({}, @document.title, '/' + route)
-
+        @_updatePath(route, options.replace)
       else
         @_updateFragment(route, options.replace)
 
@@ -101,6 +100,10 @@ class History
       @getPath(options)
     else
       @getFragment(options)
+
+  _updatePath: (route, replace) ->
+    method = if replace then 'replaceState' else 'pushState'
+    @history[method]({}, @document.title, '/' + route)
 
   _updateFragment: (route, replace) ->
     route = route.replace(/\?.*$/, '')

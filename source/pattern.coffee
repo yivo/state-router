@@ -15,7 +15,7 @@ class Pattern
       else ''
 
     @_type   = @deriveType()
-    compiler = Router.patternCompiler
+    compiler = Router.loadPatternCompiler()
     @reRoute = compiler.compile(@_source, starts: yes, ends: yes)
     @reRouteBeginning = compiler.compile(@_source, starts: yes, ends: no)
 
@@ -47,7 +47,7 @@ class Pattern
     @_ownPath
 
   @fromPath: (path, options) ->
-    decorator = Router.pathDecorator
+    decorator = Router.loadPathDecorator()
     source    = decorator.preprocessParams(decorator.escape(path))
     (options ||= {}).path = path
     @fromRegex(source, options)

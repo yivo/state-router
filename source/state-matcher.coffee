@@ -9,7 +9,7 @@ class StateMatcher
     @mergeParams(options)
 
   match: (route, options) ->
-    store = Router.stateStore
+    store = Router.loadStateStore()
 
     match = store.findOne (state) ->
       !state.isAbstract() and !state.is404() and state.pattern.test(route)
