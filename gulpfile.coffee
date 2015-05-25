@@ -15,13 +15,13 @@ gulp.task 'default', ['build', 'watch', 'server'], ->
 gulp.task 'build', ->
   global = 'StateRouter'
   dependencies = [
-    {name: 'lodash', as: '_'}
-    {name: 'jquery', as: '$'}
-    {name: 'XRegExp', as: 'XRegExp'}
-    {name: 'yess'}
-    {name: 'coffee-concerns'}
-    {name: 'strict-parameters', as: 'StrictParameters'}
-    {name: 'pub-sub', as: 'PublisherSubscriber'}
+    {require: 'lodash', global: '_'}
+    {require: 'jquery', global: '$'}
+    {require: 'XRegExp', global: 'XRegExp', argument: 'XRegExpAPI'}
+    {require: 'yess'}
+    {require: 'coffee-concerns'}
+    {require: 'strict-parameters', global: 'StrictParameters'}
+    {require: 'pub-sub', global: 'PublisherSubscriber'}
   ]
 
   gulp.src('source/_manifest.coffee')
