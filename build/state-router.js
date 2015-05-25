@@ -1005,8 +1005,6 @@
 
       LinksInterceptor.include(StrictParameters);
 
-      LinksInterceptor.prototype.reUriAnchor = /^#/;
-
       LinksInterceptor.prototype.reUriScheme = /^(\w+):(?:\/\/)?/;
 
       bindMethod = _.bindMethod;
@@ -1033,7 +1031,7 @@
         if (intercept === 'false') {
           return;
         }
-        if (this.reUriAnchor.test(href) || this.reUriScheme.test(href)) {
+        if (this.reUriScheme.test(href)) {
           return;
         }
         e.preventDefault();

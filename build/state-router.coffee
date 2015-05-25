@@ -768,7 +768,6 @@
   
     @include StrictParameters
   
-    reUriAnchor: /^#/
     reUriScheme: /^(\w+):(?:\/\/)?/
   
     {bindMethod} = _
@@ -796,7 +795,7 @@
       return if intercept is 'false'
   
       # Return if the URL is absolute, or if the protocol is mailto or javascript
-      return if @reUriAnchor.test(href) or @reUriScheme.test(href)
+      return if @reUriScheme.test(href)
   
       # If we haven't been stopped yet, then we prevent the default action
       e.preventDefault()
