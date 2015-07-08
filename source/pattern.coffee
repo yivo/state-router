@@ -1,57 +1,37 @@
-class Pattern
+class Pattern extends BaseClass
 
-  @include StrictParameters
-
-  @param 'source', as: '_source', required: yes
-  @param 'path',   as: '_ownPath'
   @param 'base'
+  @param 'source', as: 'source', required: yes
+  @param 'path',   as: 'ownPath'
 
-  constructor: (data) ->
-    @mergeParams(data)
+  {extend} = _
 
-    if baseSource = @base?.getSource()
-      @_source = baseSource + if @_source
-        '/' + @_source
-      else ''
+  constructor: ->
+    super
 
-    @_type   = @deriveType()
-    compiler = Router.loadPatternCompiler()
-    @reRoute = compiler.compile(@_source, starts: yes, ends: yes)
-    @reRouteBeginning = compiler.compile(@_source, starts: yes, ends: no)
+    if baseSource = @base?.source
+      @source = baseSource + if @source then '/' + @source else ''
 
-  deriveType: ->
-    if @_ownPath? then 'path' else 'regex'
+    @type             = if @ownPath? then 'path' else 'regex'
+    @isRegexBased     = @type is 'regex'
+    @isPathBased      = @type is 'path'
+    compiler          = Router.patternCompiler
+    @reRoute          = compiler.compile(@source, starts: yes, ends: yes)
+    @reRouteIdentity  = compiler.compile(@source, starts: yes, ends: no)
 
   test: (route) ->
     @reRoute.test(route)
 
-  testBeginning: (route) ->
-    @reRouteBeginning.test(route)
-
   match: (route) ->
     XRegExp.exec(route, @reRoute)
 
-  matchBeginning: (route) ->
-    XRegExp.exec(route, @reRouteBeginning)
-
-  isRegexBased: ->
-    @_type is 'regex'
-
-  isPathBased: ->
-    @_type is 'path'
-
-  getSource: ->
-    @_source
-
-  getOwnPath: ->
-    @_ownPath
+  identity: (route) ->
+    XRegExp.exec(route, @reRouteIdentity)
 
   @fromPath: (path, options) ->
-    decorator = Router.loadPathDecorator()
+    decorator = Router.pathDecorator
     source    = decorator.preprocessParams(decorator.escape(path))
-    (options ||= {}).path = path
-    @fromRegex(source, options)
+    @fromRegexSource(source, extend({}, options, {path}))
 
-  @fromRegex: (source, options) ->
-    (options ||= {}).source = source
-    new this(options)
+  @fromRegexSource: (source, options) ->
+    new this(extend({}, options, {source}))

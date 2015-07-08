@@ -1,19 +1,11 @@
-Router.loadPatternCompiler = ->
-  @patternCompiler ||= new PatternCompiler(@pattermCompilerOptions)
+class PatternCompiler extends BaseClass
 
-class PatternCompiler
-
-  @include StrictParameters
-
-  rsQueryString: '(?:\\?(?<query>([\\s\\S]*)))?'
-  reQueryString: XRegExp(@::rsQueryString + '$')
-  leftBoundary: '^'
-  rightBoundary: @::rsQueryString + '$'
+  rsQueryString:  '(?:\\?(?<query>([\\s\\S]*)))?'
+  reQueryString:  XRegExp(this::rsQueryString + '$')
+  leftBoundary:   '^'
+  rightBoundary:  this::rsQueryString + '$'
 
   {isEnabled} = _
-
-  constructor: (options) ->
-    @mergeParams(options)
 
   compile: (source, options) ->
     XRegExp(@bound(source, options))
@@ -26,7 +18,7 @@ class PatternCompiler
     if starts
       source = @leftBoundary + source
 
-      if empty and !ends
+      if empty and not ends
         source = source + @rsQueryString
 
     if ends

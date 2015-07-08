@@ -1,8 +1,9 @@
 XRegExp = XRegExpAPI.XRegExp or XRegExpAPI
 
-# @include concerns/state-defaults-access.coffee
-# @include concerns/state-parameters-extract.coffee
+# @include concerns/state-default-parameters.coffee
+# @include concerns/state-route-parameters.coffee
 # @include concerns/state-route-assemble.coffee
+# @include base-class.coffee
 # @include state-router.coffee
 # @include state.coffee
 # @include state-store.coffee
@@ -18,12 +19,28 @@ XRegExp = XRegExpAPI.XRegExp or XRegExpAPI
 # @include history.coffee
 # @include links-interceptor.coffee
 
+do ->
+  names = [
+    'history', 'linksInterceptor', 'paramHelper',
+    'pathDecorator', 'patternCompiler', 'stateBuilder',
+    'controllerStore', 'dispatcher', 'stateMatcher', 'stateStore'
+  ]
+
+  define = (name) ->
+    eval "var Class = #{name.classCase()}"
+    Router["load#{name.capitalize()}"] = ->
+      this["_#{name}"] ||= new Class(_.result(this, "#{name}Options"))
+    PropertyAccessors.property(Router, name, readonly: yes, get: "load#{name.capitalize()}")
+
+  define(name) for name in names
+  return
+
 _.extend Router, {
   State
   StateStore
   StateBuilder
-  StateDefaultsAccess
-  StateParametersExtract
+  StateDefaultParameters
+  StateRouteParameters
   StateRouteAssemble
   Dispatcher
   ControllerStore

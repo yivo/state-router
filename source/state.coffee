@@ -1,55 +1,47 @@
-Router.createState = (options) ->
-  new State(options)
+class State extends BaseClass
 
-class State
-
-  @include PublisherSubscriber
-  @include StrictParameters
-  @include StateDefaultsAccess
-  @include StateParametersExtract
+  @include StateDefaultParameters
+  @include StateRouteParameters
   @include StateRouteAssemble
 
-  @param 'name',       as: '_name', required: yes
+  @param 'name',       required: yes
   @param 'pattern',    required: yes
   @param 'base'
-  @param 'assembler',  as: '_customAssembler'
-  @param 'controller', as: '_controller'
-  @param 'defaults',   as: '_defaultParams'
-  @param '404',        as: '_404'
-  @param 'abstract',   as: '_abstract'
+  @param '404',        as: 'is404'
+  @param 'abstract',   as: 'isAbstract'
+  @param 'controller', as: '_controllerClassName'
 
-  {bindMethod, isFunction, extend} = _
+  {isFunction} = _
 
-  constructor: (options) ->
-    @mergeParams(options)
-    bindMethod(this, 'paramAssembler')
-    if @isAbstract() and @is404()
-      throw new Error('State can be either abstract or 404 or none')
+  constructor: ->
+    super
+    @is404      = !!@is404
+    @isAbstract = !!@isAbstract
+    @isRoot     = !@base
 
-  getName: ->
-    @_name
+    if @isAbstract and @is404
+      # TODO Error message
+      throw new Error 'State can be either abstract or 404 or none'
 
-  hasComputedControllerName: ->
-    isFunction(@_controller)
+    if not @is404 and @pattern.isRegexBased and not @ownRouteAssembler
+      # TODO Error message
+      throw new Error "[#{Router}] To assemble route from pattern which
+        is based on regex you must define custom assembler. #{this}"
 
-  getControllerName: ->
-    unless @hasComputedControllerName()
-      @_controller
+  toString: ->
+    "#{@constructor.name} '#{@name}'"
 
-  computeControllerName: ->
-    if @hasComputedControllerName()
-      @_controller.apply(this, arguments)
+  computeControllerClass: ->
+    Class = if isFunction(@_controllerClassName)
+      @_controllerClassName.apply(this, arguments)
+    else
+      @_controllerClassName
 
-  isAbstract: ->
-    !!@_abstract
+    if isString(Class)
+      Class = Router.controllerStore.findClass(Class)
+    Class
 
-  is404: ->
-    !!@_404
-
-  isRoot: ->
-    !@base
-
-  getRoot: ->
+  @property 'root', ->
     state = this
 
     loop
@@ -59,7 +51,7 @@ class State
     if state isnt this
       state
 
-  getChain: ->
+  @property 'chain', ->
     chain = [this]
     state = this
     while state = state.base

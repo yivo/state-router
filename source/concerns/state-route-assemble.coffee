@@ -1,61 +1,41 @@
 StateRouteAssemble = do ->
 
-  {extend} = _
+  {extend, bind} = _
 
-  paramAssembler: (match, optional, token, splat, param) ->
-    value = if @_assembleParams?[param]?
-      @_assembleParams[param]
-    else
-      @getDefaultParam(param)
+  included: (Class) ->
+    Class.param 'assembler', as: 'ownRouteAssembler'
+    Class.param 'paramAssembler'
+
+  paramAssembler: (params, match, optional, token, splat, param) ->
+    value = params?[param] ? @defaults[param]
 
     if not value?
-      if not optional
-        throw "#{param} is required"
-      ''
+      throw "#{param} is required" if not optional
+      return ''
+
+    paramHelper = Router.paramHelper
+    (token or '') + if splat
+      paramHelper.encodeSplat(param, value)
     else
-      (token || '') + if splat
-        encodeURI(value)
-      else encodeURIComponent(value)
-
-  hasCustomRouteAssembler: ->
-    !!@_customAssembler
-
-  getCustomRouteAssembler: ->
-    @_customAssembler
-
-  requiresCustomRouteAssembler: ->
-    @pattern.isRegexBased()
+      paramHelper.encode(param, value)
 
   assembleRoute: (params) ->
-    route = if @base
-      @base.assembleRoute(params)
-    else ''
-
-    own = @assembleOwnRoute(params)
+    route = @base?.assembleRoute(params) or ''
+    own   = @assembleOwnRoute(params)
     route = if route
       route + (if own then '/' else '') + own
     else own
 
-    if params?.query?
-      route = route + (if params.query[0] is '?'
-        ''
-      else '?') + params.query
+    if query = params?.query?
+      route = route + (if query[0] is '?' then '' else '?') + query
     route
 
   assembleOwnRoute: (params) ->
-    if @hasCustomRouteAssembler()
-      assembler = @getCustomRouteAssembler()
-      own = assembler.call(this, extend({}, @getOwnDefaultParams(), params), this)
-
-    else if @requiresCustomRouteAssembler()
-      throw "To assemble route from pattern which
-        is based on regex you need to define custom assembler.
-        In state '#{@getName()}'"
-
+    if assembler = @ownRouteAssembler
+      own = assembler.call(this, extend({}, @ownDefaults, params), this)
     else
-      @_assembleParams = params
-      path             = @pattern.getOwnPath()
-      pathDecorator    = Router.pathDecorator
-      own              = pathDecorator.replaceParams(path, @paramAssembler)
-      @_assembleParams = null
+      path = @pattern.ownPath
+      own  = Router.pathDecorator.replaceParams(path, bind(@paramAssembler, this, params))
     own
+
+StateRouteAssemble.route = StateRouteAssemble.assembleRoute

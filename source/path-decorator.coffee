@@ -1,18 +1,10 @@
-Router.loadPathDecorator = ->
-  @pathDecorator ||= new PathDecorator(@pathDecoratorOptions)
+class PathDecorator extends BaseClass
 
-class PathDecorator
+  @params 'paramPreprocessor', 'reEscape', 'escapeReplacement'
 
-  @include StrictParameters
-
-  constructor: (options) ->
-    @mergeParams(options)
-
-  reEscape: /[\-{}\[\]+?.,\\\^$|#\s]/g
-
-  escapeReplacement: '\\$&'
-
-  reParam: /(\()?(.)?(\*)?:(\w+)\)?/g
+  reEscape:           /[\-{}\[\]+?.,\\\^$|#\s]/g
+  reParam:            /(\()?(.)?(\*)?:(\w+)\)?/g
+  escapeReplacement:  '\\$&'
 
   paramPreprocessor: (match, optional, token, splat, param) ->
     ret = "(?:#{token || ''}(?<#{param}>" + (if splat then '[^?]*?' else '[^/?]+') + '))'
@@ -52,4 +44,3 @@ class PathDecorator
 
   escape: (path) ->
     path.replace(@reEscape, @escapeReplacement)
-

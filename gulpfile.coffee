@@ -19,9 +19,11 @@ gulp.task 'build', ->
     {require: 'jquery', global: '$'}
     {require: 'XRegExp', global: 'XRegExp', argument: 'XRegExpAPI'}
     {require: 'yess'}
+    {require: 'ize'}
     {require: 'coffee-concerns'}
     {require: 'strict-parameters', global: 'StrictParameters'}
     {require: 'pub-sub', global: 'PublisherSubscriber'}
+    {require: 'property-accessors', global: 'PropertyAccessors'}
   ]
 
   gulp.src('source/_manifest.coffee')

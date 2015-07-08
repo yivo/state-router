@@ -1,20 +1,23 @@
-Router.loadLinksInterceptor = ->
-  @linksInterceptor ||= new LinksInterceptor(@linksInterceptorOptions)
-
-class LinksInterceptor
-
-  @include StrictParameters
-
-  reUriScheme: /^(\w+):(?:\/\/)?/
+class LinksInterceptor extends BaseClass
 
   {bindMethod} = _
 
-  constructor: (options) ->
-    @mergeParams(options)
+  constructor: ->
+    super
     bindMethod(this, 'intercept')
+    @started = false
 
   start: ->
-    Router.$(document).on('click', 'a', @intercept)
+    unless @started
+      Router.$(document).on('click', 'a', @intercept)
+      @started = true
+    this
+
+  stop: ->
+    if @started
+      Router.$(document).off('click', 'a', @intercept)
+      @started = false
+    this
 
   intercept: (e) ->
     # Only intercept left-clicks
@@ -32,7 +35,7 @@ class LinksInterceptor
     return if intercept is 'false'
 
     # Return if the URL is absolute, or if the protocol is mailto or javascript
-    return if @reUriScheme.test(href)
+    return if Router.matchUriScheme(href)?
 
     # If we haven't been stopped yet, then we prevent the default action
     e.preventDefault()
@@ -41,4 +44,5 @@ class LinksInterceptor
     # the leading slash. Regex required for IE8 support
     pathname = $link[0].pathname.replace(/^\//, '')
 
-    Router.loadHistory().navigate(pathname, true)
+    Router.history.navigate(pathname, true)
+    return
