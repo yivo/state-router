@@ -36,7 +36,7 @@ gulp.task 'build', ->
   .pipe concat('state-router.js')
   .pipe gulp.dest('build')
 
-gulp.task 'build-min', ['build'], ->
+gulp.task 'build-min', ->
   gulp.src('build/state-router.js')
   .pipe uglify()
   .pipe rename('state-router.min.js')

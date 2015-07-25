@@ -1,10 +1,33 @@
 XRegExp = XRegExpAPI.XRegExp or XRegExpAPI
 
+Router = {}
+
+do ->
+  names = 'history linksInterceptor paramHelper
+    pathDecorator patternCompiler stateBuilder
+    dispatcher stateMatcher stateStore'
+
+  define = (name) ->
+    keyName   = "_#{name}"
+    loadName  = "load#{name.capitalize()}"
+    className = name.classCase()
+
+    Router[loadName] = ->
+      Router[keyName] ||= new Router[className](_.result(Router, "#{name}Options"))
+
+    PropertyAccessors.property(Router, name, readonly: yes, get: loadName)
+
+  define(name) for name in names.split(/\s+/)
+
+  PropertyAccessors.property(Router, 'states', readonly: yes, get: 'loadStateStore')
+  return
+
 # @include concerns/state-default-parameters.coffee
 # @include concerns/state-route-parameters.coffee
 # @include concerns/state-route-assemble.coffee
-# @include base-class.coffee
+# @include concerns/state-store-framework-features.coffee
 # @include state-router.coffee
+# @include base-class.coffee
 # @include state.coffee
 # @include state-store.coffee
 # @include state-builder.coffee
@@ -14,26 +37,9 @@ XRegExp = XRegExpAPI.XRegExp or XRegExpAPI
 # @include path-decorator.coffee
 # @include dispatcher.coffee
 # @include param-helper.coffee
-# @include controller-store.coffee
 # @include transition.coffee
 # @include history.coffee
 # @include links-interceptor.coffee
-
-do ->
-  names = [
-    'history', 'linksInterceptor', 'paramHelper',
-    'pathDecorator', 'patternCompiler', 'stateBuilder',
-    'controllerStore', 'dispatcher', 'stateMatcher', 'stateStore'
-  ]
-
-  define = (name) ->
-    eval "var Class = #{name.classCase()}"
-    Router["load#{name.capitalize()}"] = ->
-      this["_#{name}"] ||= new Class(_.result(this, "#{name}Options"))
-    PropertyAccessors.property(Router, name, readonly: yes, get: "load#{name.capitalize()}")
-
-  define(name) for name in names
-  return
 
 _.extend Router, {
   State
@@ -42,8 +48,8 @@ _.extend Router, {
   StateDefaultParameters
   StateRouteParameters
   StateRouteAssemble
+  StateStoreFrameworkFeatures
   Dispatcher
-  ControllerStore
   History
   PathDecorator
   PatternCompiler
@@ -51,4 +57,7 @@ _.extend Router, {
   Transition
   Pattern
   ParamHelper
+  LinksInterceptor
 }
+
+Router

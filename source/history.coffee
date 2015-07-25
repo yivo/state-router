@@ -1,79 +1,118 @@
+Router.once 'start', ->
+  Router.on 'routeChange', (route) ->
+    state = Router.stateMatcher.match(route)
+    Router.transition(state, state.params(route), route)
+
+Router.on 'start', ->
+  Router.history.start()
+
+Router.on 'stop', ->
+  Router.history.stop()
+
+Router.once 'debug', ->
+  Router.once 'routeChange', (route) ->
+    console.debug "[#{Router}] Started with route '#{route}'"
+
+    Router.on 'routeChange', (route) ->
+      console.debug "[#{Router}] Route changed '#{route}'"
+
+  Router.on 'fragmentUpdate', (fragment, replace) ->
+    console.debug "[#{Router}] " + if replace
+      "Replaced hash in history with '#{fragment}'"
+    else "Set hash to history '#{fragment}'"
+
+  Router.on 'pathUpdate', (path, replace) ->
+    console.debug "[#{Router}] " + if replace
+      "Replaced state in history with '#{path}'"
+    else "Pushed state to history '#{path}'"
+
 class History extends BaseClass
 
-  reFragment: /#(.*)$/
+  @derivePath = (obj) ->
+    decodeURI((obj.pathname + obj.search).replace(/%25/g, '%2525')).replace(/^\/+/, '')
 
-  options: ->
-    hashChange: yes
-    load:       yes
-    interval:   50
+  @deriveFragment = (obj) ->
+    (obj.href.match(/#(.*)$/)?[1] or '') + obj.search
 
-  {extend, bindMethod, onceMethod, isEnabled} = _
+  @normalizeRoute = (route) ->
+    pre = if '?' in route
+      route.replace(/\/+\?/, '?')
+    else
+      route.replace(/\/+$/, '')
+    pre.replace(/^(\/|#)+/, '')
 
   constructor: ->
+    @options            = {}
+    @options.load       = true
+    @options.interval   = 50
+
     super
-    onceMethod(this, 'start')
-    bindMethod(this, 'check')
+    _.onceMethod(this, 'start')
+    _.bindMethod(this, 'check')
 
     @document           = document? and document
     @window             = window? and window
     @location           = @window?.location
     @history            = @window?.history
     @supportsPushState  = @history?.pushState?
-    @pushStateBased     = @supportsPushState and @options?.pushState?
-    @hashChangeBased    = !@pushStateBased
-    @hasStarted         = false
+    @supportsHashChange = 'onhashchange' of @window
+    @pushStateBased     = @supportsPushState and @options.pushState isnt false
+    @hashChangeBased    = not @pushStateBased and @supportsHashChange and @options.hashChange isnt false
+    @started            = false
 
   @property 'path', ->
-    decodeURI((@location.pathname + @location.search).replace(/%25/g, '%2525')).replace(/^\/+/, '')
+    @constructor.derivePath(@location)
 
   @property 'fragment', ->
-    (@location.href.match(@reFragment)?[1] or '') + @location.search
+    @constructor.deriveFragment(@location)
 
   @property 'route', ->
     if @pushStateBased then @path else @fragment
 
   start: ->
-    unless @hasStarted
-      if @pushStateBased
-        Router.$(@window).on('popstate', @check)
-      else if 'onhashchange' of @window
-        Router.$(@window).on('hashchange', @check)
-      else
-        @_intervalId = setInterval(@check, @interval)
+    @ensureNotStarted()
 
-      @hasStarted = true
-      @load(@route) if @options.load
+    if @pushStateBased
+      Router.$(@window).on('popstate', @check)
+    else if @hashChangeBased
+      Router.$(@window).on('hashchange', @check)
+    else
+      @_intervalId = setInterval(@check, @options.interval)
+
+    @started = true
+    @load(@route) if @options.load
     this
 
   stop: ->
-    if @hasStarted
-      Router.$(@window).off('popstate', @check)
-      Router.$(@window).off('hashchange', @check)
-      if @_intervalId
-        clearInterval(@_intervalId)
-        @_intervalId = null
-      @hasStarted = false
+    @ensureStarted()
+    Router.$(@window).off('popstate', @check)
+    Router.$(@window).off('hashchange', @check)
+    if @_intervalId
+      clearInterval(@_intervalId)
+      @_intervalId = null
+    @started = false
     this
 
   check: (e) ->
-    if @hasStarted and @route isnt @loadedRoute
+    if @ensureStarted() and @route isnt @loadedRoute
       @load(@route)
     this
 
   load: (route) ->
-    if @hasStarted
-      fixed = @removeRouteAmbiguity(route)
+    @ensureStarted()
+    normalized = @constructor.normalizeRoute(route)
 
-      if route isnt fixed
-        return @navigate(fixed, replace: yes, load: yes)
+    if route isnt normalized
+      return @navigate(normalized, replace: yes, load: yes)
 
-      @loadedRoute = route
-      @notify('load', this, route)
-      true
-    else false
+    @loadedRoute = route
+    Router.notify('routeChange', route)
+    true
 
   navigate: (route, options) ->
-    route = @removeRouteAmbiguity(route)
+    @ensureStarted()
+
+    route = @constructor.normalizeRoute(route)
 
     if route isnt @loadedRoute
       @loadedRoute = route
@@ -92,22 +131,29 @@ class History extends BaseClass
 
   _updatePath: (route, replace) ->
     method = if replace then 'replaceState' else 'pushState'
-    console.debug "#{method} #{route}"
     @history[method]({}, @document.title, '/' + route)
-
-  _updateFragment: (route, replace) ->
-    route = route.replace(/\?.*$/, '')
-    if replace
-      href = location.href.replace(/#.*$/, '')
-      location.replace(href + '#' + route)
-    else
-      location.hash = '#' + route
+    Router.notify('pathUpdate', route, replace)
     return
 
-  removeRouteAmbiguity: (route) ->
-    route = if '?' in route
-      route.replace(/\/+\?/, '?')
-    else
-      route.replace(/\/+$/, '')
+  _updateFragment: (route, replace) ->
+    # TODO Fix this
+    route = route.replace(/\?.*$/, '')
 
-    route = route.replace(/^(\/|#)+/, '')
+    if replace
+      href = @location.href.replace(/(javascript:|#).*$/, '')
+      @location.replace(href + '#' + route)
+    else
+      @location.hash = '#' + route
+
+    Router.notify('fragmentUpdate', replace)
+    return
+
+  ensureStarted: ->
+    unless @started
+      throw new Error "[#{Router}] History hasn't been started!"
+    true
+
+  ensureNotStarted: ->
+    if @started
+      throw new Error "[#{Router}] History has already been started!"
+    true

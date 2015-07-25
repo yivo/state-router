@@ -1,25 +1,35 @@
 class StateBuilder extends BaseClass
 
-  {extend} = _
-
   build: (name, base, data) ->
     if base
       name = base.name + '.' + name
       basePattern = base.pattern
 
-    pattern = if data.path?
-      Pattern.fromPath(data.path, base: basePattern)
+    if data['404'] and !data.pattern? and !data.path
+      data.pattern = '.*'
 
-    else if data.pattern?
+    pattern = if data.pattern?
       Pattern.fromRegexSource(data.pattern, base: basePattern)
 
-    else if data['404']
-      Pattern.fromRegexSource('.*', base: basePattern)
+    else if data.path?
+      Pattern.fromPath(data.path, base: basePattern)
 
     else
-      # TODO Error message
-      throw new Error("Neither path nor pattern specified for state: '#{name}'")
+      throw new Error "[#{Router}] Neither path nor pattern specified for state #{name}"
 
-    extend data, {name, base, pattern}
+    _.extend data, {name, base, pattern}
 
     new State(data)
+
+Router.createState = (name) ->
+  length  = arguments.length
+  base    = arguments[1] if length > 1
+
+  if _.isPlainObject(base)
+    options = base
+    base    = null
+  else
+    base    = Router.states.get(base) if _.isString(base)
+    options = arguments[2] if length > 2
+
+  Router.stateBuilder.build(name, base, options)

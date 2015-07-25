@@ -1,206 +1,267 @@
 (function() {
   var hasProp = {}.hasOwnProperty,
+    slice = [].slice,
+    extend1 = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
     indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   (function(root, factory) {
     if (typeof define === 'function' && define.amd) {
-      define(['lodash', 'jquery', 'XRegExp', 'strict-parameters', 'pub-sub', 'yess', 'coffee-concerns'], function(_, $, XRegExpAPI, StrictParameters, PublisherSubscriber) {
-        return root.StateRouter = factory(root, _, $, XRegExpAPI, StrictParameters, PublisherSubscriber);
+      define(['lodash', 'jquery', 'XRegExp', 'strict-parameters', 'pub-sub', 'property-accessors', 'yess', 'ize', 'coffee-concerns'], function(_, $, XRegExpAPI, StrictParameters, PublisherSubscriber, PropertyAccessors) {
+        return root.StateRouter = factory(root, _, $, XRegExpAPI, StrictParameters, PublisherSubscriber, PropertyAccessors);
       });
     } else if (typeof module === 'object' && typeof module.exports === 'object') {
-      module.exports = factory(root, require('lodash'), require('jquery'), require('XRegExp'), require('strict-parameters'), require('pub-sub'), require('yess'), require('coffee-concerns'));
+      module.exports = factory(root, require('lodash'), require('jquery'), require('XRegExp'), require('strict-parameters'), require('pub-sub'), require('property-accessors'), require('yess'), require('ize'), require('coffee-concerns'));
     } else {
-      root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.StrictParameters, root.PublisherSubscriber);
+      root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.StrictParameters, root.PublisherSubscriber, root.PropertyAccessors);
     }
-  })(this, function(root, _, $, XRegExpAPI, StrictParameters, PublisherSubscriber) {
-    var ControllerStore, Dispatcher, History, LinksInterceptor, ParamHelper, PathDecorator, Pattern, PatternCompiler, Router, State, StateBuilder, StateDefaultsAccess, StateMatcher, StateParametersExtract, StateRouteAssemble, StateStore, Transition, XRegExp;
+  })(this, function(__root__, _, $, XRegExpAPI, StrictParameters, PublisherSubscriber, PropertyAccessors) {
+    var BaseClass, Dispatcher, History, LinksInterceptor, ParamHelper, PathDecorator, Pattern, PatternCompiler, Router, State, StateBuilder, StateDefaultParameters, StateMatcher, StateRouteAssemble, StateRouteParameters, StateStore, StateStoreFrameworkFeatures, Transition, XRegExp;
     XRegExp = XRegExpAPI.XRegExp || XRegExpAPI;
-    StateDefaultsAccess = {
-      getDefaultParam: function(param) {
-        var state, value;
-        state = this;
-        while (state) {
-          value = state.getOwnDefaultParam(param);
-          if (value != null) {
-            return value;
+    Router = {};
+    (function() {
+      var define, k, len, name, names, ref;
+      names = 'history linksInterceptor paramHelper pathDecorator patternCompiler stateBuilder dispatcher stateMatcher stateStore';
+      define = function(name) {
+        var className, keyName, loadName;
+        keyName = "_" + name;
+        loadName = "load" + (name.capitalize());
+        className = name.classCase();
+        Router[loadName] = function() {
+          return Router[keyName] || (Router[keyName] = new Router[className](_.result(Router, name + "Options")));
+        };
+        return PropertyAccessors.property(Router, name, {
+          readonly: true,
+          get: loadName
+        });
+      };
+      ref = names.split(/\s+/);
+      for (k = 0, len = ref.length; k < len; k++) {
+        name = ref[k];
+        define(name);
+      }
+      PropertyAccessors.property(Router, 'states', {
+        readonly: true,
+        get: 'loadStateStore'
+      });
+    })();
+    StateDefaultParameters = {
+      included: function(Class) {
+        Class.param('defaults', {
+          as: '_ownDefaults'
+        });
+        Class.property('ownDefaults', function() {
+          if (_.isFunction(this._ownDefaults)) {
+            this._ownDefaults = this._ownDefaults();
           }
-          state = state.base;
-        }
-      },
-      getOwnDefaultParam: function(param) {
-        var ownDefaults;
-        ownDefaults = this.getOwnDefaultParams();
-        return ownDefaults != null ? ownDefaults[param] : void 0;
-      },
-      getOwnDefaultParams: function() {
-        return this._defaultParams;
-      },
-      hasOwnDefaultParam: function(param) {
-        return this.getOwnDefaultParam(param) != null;
+          if (!_.isObject(this._ownDefaults)) {
+            this._ownDefaults = {};
+          }
+          return this._ownDefaults;
+        });
+        return Class.property('defaults', function() {
+          var defaults, param, params, state, value;
+          state = this;
+          params = {};
+          while (state) {
+            defaults = state.ownDefaults;
+            if (defaults) {
+              for (param in defaults) {
+                value = defaults[param];
+                if (params[param] == null) {
+                  params[param] = value;
+                }
+              }
+            }
+            state = state.base;
+          }
+          return params;
+        });
       }
     };
-    StateParametersExtract = {
+    StateRouteParameters = {
       extractParams: function(route) {
         var helper, match, param, params, value;
-        helper = Router.loadParamHelper();
+        helper = Router.paramHelper;
         match = this.pattern.match(route);
-        params = {
-          __version: helper.hashCode(route)
-        };
+        params = _.extend({}, this.defaults);
         for (param in match) {
           if (!hasProp.call(match, param)) continue;
           value = match[param];
           if (!helper.refersToRegexMatch(param)) {
-            params[param] = value != null ? !helper.refersToQueryString(param) ? helper.decode(param, value) : value : this.getDefaultParam(param);
+            if (value != null) {
+              params[param] = helper.refersToQueryString(param) ? value : helper.decode(param, value);
+            }
           }
         }
         return params;
       },
-      extractBeginningParams: function(route) {
+      identityParams: function(route) {
         var helper, match, param, params, value;
-        helper = Router.loadParamHelper();
-        match = this.pattern.matchBeginning(route);
-        params = {
-          __version: match != null ? helper.hashCode(match[0]) : void 0,
-          query: this.extractQueryString(route)
-        };
+        helper = Router.paramHelper;
+        match = this.pattern.identity(route);
+        params = _.extend({}, this.defaults);
+        params.query = this.extractQueryString(route);
         for (param in match) {
           if (!hasProp.call(match, param)) continue;
           value = match[param];
-          if (!helper.refersToRegexMatch(param)) {
-            params[param] = value != null ? helper.decode(param, value) : this.getOwnDefaultParam(param);
+          if ((value != null) && !helper.refersToRegexMatch(param)) {
+            params[param] = helper.decode(param, value);
           }
         }
         return params;
       },
       extractQueryString: function(route) {
         var ref;
-        return (ref = XRegExp.exec(route, Router.loadPatternCompiler().reQueryString)) != null ? ref.query : void 0;
+        return (ref = XRegExp.exec(route, Router.patternCompiler.reQueryString)) != null ? ref.query : void 0;
       }
     };
-    StateRouteAssemble = (function() {
-      var extend;
-      extend = _.extend;
-      return {
-        paramAssembler: function(match, optional, token, splat, param) {
-          var ref, value;
-          value = ((ref = this._assembleParams) != null ? ref[param] : void 0) != null ? this._assembleParams[param] : this.getDefaultParam(param);
-          if (value == null) {
-            if (!optional) {
-              throw param + " is required";
-            }
-            return '';
-          } else {
-            return (token || '') + (splat ? encodeURI(value) : encodeURIComponent(value));
+    StateRouteParameters.params = StateRouteParameters.extractParams;
+    StateRouteAssemble = {
+      included: function(Class) {
+        Class.param('assembler', {
+          as: 'ownRouteAssembler'
+        });
+        return Class.param('paramAssembler');
+      },
+      paramAssembler: function(params, match, optional, token, splat, param) {
+        var paramHelper, ref, value;
+        value = (ref = params != null ? params[param] : void 0) != null ? ref : this.defaults[param];
+        if (value == null) {
+          if (!optional) {
+            throw "[" + Router + "] Parameter '" + param + "' is required to assemble " + this.name + " state's route";
           }
-        },
-        hasCustomRouteAssembler: function() {
-          return !!this._customAssembler;
-        },
-        getCustomRouteAssembler: function() {
-          return this._customAssembler;
-        },
-        requiresCustomRouteAssembler: function() {
-          return this.pattern.isRegexBased();
-        },
-        assembleRoute: function(params) {
-          var own, route;
-          route = this.base ? this.base.assembleRoute(params) : '';
-          own = this.assembleOwnRoute(params);
-          route = route ? route + (own ? '/' : '') + own : own;
-          if ((params != null ? params.query : void 0) != null) {
-            route = route + (params.query[0] === '?' ? '' : '?') + params.query;
-          }
-          return route;
-        },
-        assembleOwnRoute: function(params) {
-          var assembler, own, path, pathDecorator;
-          if (this.hasCustomRouteAssembler()) {
-            assembler = this.getCustomRouteAssembler();
-            own = assembler.call(this, extend({}, this.getOwnDefaultParams(), params), this);
-          } else if (this.requiresCustomRouteAssembler()) {
-            throw "To assemble route from pattern which is based on regex you need to define custom assembler. In state '" + (this.getName()) + "'";
-          } else {
-            this._assembleParams = params;
-            path = this.pattern.getOwnPath();
-            pathDecorator = Router.pathDecorator;
-            own = pathDecorator.replaceParams(path, this.paramAssembler);
-            this._assembleParams = null;
-          }
-          return own;
+          return '';
         }
-      };
-    })();
-    Router = (function() {
-      var extend, isString, last;
-
-      function Router() {}
-
-      last = _.last, isString = _.isString, extend = _.extend;
-
-      extend(Router, PublisherSubscriber.InstanceMembers || PublisherSubscriber);
-
-      Router.$ = $;
-
-      Router.controller = function(name, klass) {
-        return Router.loadControllerStore().registerClass(name, klass);
-      };
-
-      Router.state = (function() {
-        var parentsStack;
-        parentsStack = [];
-        return function(name, options, children) {
-          var base, state;
-          base = last(parentsStack);
-          state = Router.loadStateBuilder().build(name, base, options);
-          Router.loadStateStore().push(state);
-          if (children) {
-            parentsStack.push(state);
-            children();
-            parentsStack.pop();
-          }
-          return Router;
-        };
-      })();
-
-      Router.map = function(callback) {
-        return callback.call(this, Router.state);
-      };
-
-      Router.urlTo = function(stateName, params) {
-        var state;
-        if (!(state = Router.loadStateStore().get(stateName))) {
-          throw new Error("State '" + stateName + "' wasn't found");
+        paramHelper = Router.paramHelper;
+        return (token || '') + (splat ? paramHelper.encodeSplat(param, value) : paramHelper.encode(param, value));
+      },
+      assembleRoute: function(params) {
+        var own, query, ref, route;
+        route = ((ref = this.base) != null ? ref.assembleRoute(params) : void 0) || '';
+        own = this.assembleOwnRoute(params);
+        route = route ? route + (own ? '/' : '') + own : own;
+        if (query = (params != null ? params.query : void 0) != null) {
+          route = route + (query[0] === '?' ? '' : '?') + query;
         }
-        return (Router.history.hashChangeBased ? '#' : '/') + state.assembleRoute(params);
-      };
-
-      Router.start = function() {
-        Router.loadHistory().start();
-        return Router.loadLinksInterceptor().start();
-      };
-
-      return Router;
-
-    })();
-    Router.createState = function(options) {
-      return new State(options);
+        return route;
+      },
+      assembleOwnRoute: function(params) {
+        var assembler, own, path;
+        if (assembler = this.ownRouteAssembler) {
+          own = assembler.call(this, _.extend({}, this.ownDefaults, params), this);
+        } else {
+          path = this.pattern.ownPath;
+          own = Router.pathDecorator.replaceParams(path, _.bind(this.paramAssembler, this, params));
+        }
+        return own;
+      }
     };
-    State = (function() {
-      var bindMethod, extend, isFunction;
+    StateRouteAssemble.route = StateRouteAssemble.assembleRoute;
+    StateStoreFrameworkFeatures = (function() {
+      var Concern, key, ref, value;
+      Concern = {};
+      ref = {
+        Before: 0,
+        After: 1
+      };
+      for (key in ref) {
+        value = ref[key];
+        Concern['insert' + key] = (function(type, offset) {
+          return function(state, insertedState) {
+            var _newState, _state, i, j;
+            _state = this.get(state);
+            _newState = this.get(insertedState);
+            i = this.indexOf(_state);
+            j = this.indexOf(_newState);
+            if (i < 0) {
+              throw new Error("[" + Router + "] Can't insert " + _newState + " " + type + " " + _state + " because " + _state + " does not exist in store");
+            }
+            if (j > -1) {
+              _.removeAt(this, j);
+            }
+            _.insertAt(this, i + offset, _newState);
+            return this;
+          };
+        })(key.toLowerCase(), value);
+      }
+      return Concern;
+    })();
+    _.extend(Router, PublisherSubscriber.InstanceMembers);
+    Router.$ = $;
+    Router.toString = function() {
+      return 'StateRouter';
+    };
+    Router.start = function() {
+      Router.notify('debug');
+      return Router.notify('start');
+    };
+    Router.stop = function() {
+      return Router.notify('stop');
+    };
+    Router.url = function(state, params) {
+      var c;
+      c = Router.history.pushStateBased ? '/' : '#';
+      return c + Router.states.fetch(state).route(params);
+    };
+    Router.go = function(state, params) {
+      return Router.navigate(Router.url(state, params), true);
+    };
+    Router.navigate = function(route, options) {
+      return Router.history.navigate(route, options);
+    };
+    Router.transition = function(state, params) {
+      var fromParams, fromRoute, fromState, toParams, toRoute, toState, transition;
+      fromState = Router.currentState;
+      fromParams = Router.currentParams;
+      fromRoute = Router.currentRoute;
+      toState = Router.states.fetch(state);
+      toParams = params || {};
+      toRoute = Router.history.route;
+      transition = new Transition({
+        fromState: fromState,
+        fromParams: fromParams,
+        fromRoute: fromRoute,
+        toState: toState,
+        toParams: toParams,
+        toRoute: toRoute
+      });
+      return transition.dispatch();
+    };
+    Router.controllerLookupNamespace = this;
+    Router.controllerLookup = function(name) {
+      var ns;
+      ns = _.result(Router, 'controllerLookupNamespace');
+      return ns[name + "Controller"] || ns[name] || ns[(name.classCase()) + "Controller"] || ns[name.classCase()];
+    };
+    Router.findController = function() {
+      var Class, arg, rest;
+      arg = arguments[0], rest = 2 <= arguments.length ? slice.call(arguments, 1) : [];
+      Class = _.isFunction(arg) ? arg.apply(null, rest) : Router.controllerLookup(arg);
+      if (_.isString(Class)) {
+        Class = Router.controllerLookup(Class);
+      }
+      return Class;
+    };
+    BaseClass = (function() {
+      BaseClass.include(StrictParameters);
 
-      State.include(PublisherSubscriber);
+      function BaseClass(options) {
+        this.constructWith(options);
+      }
 
-      State.include(StrictParameters);
+      return BaseClass;
 
-      State.include(StateDefaultsAccess);
+    })();
+    State = (function(superClass) {
+      extend1(State, superClass);
 
-      State.include(StateParametersExtract);
+      State.include(StateDefaultParameters);
+
+      State.include(StateRouteParameters);
 
       State.include(StateRouteAssemble);
 
       State.param('name', {
-        as: '_name',
         required: true
       });
 
@@ -210,69 +271,35 @@
 
       State.param('base');
 
-      State.param('assembler', {
-        as: '_customAssembler'
+      State.param('404', {
+        as: 'handles404'
       });
+
+      State.param('abstract');
 
       State.param('controller', {
-        as: '_controller'
+        as: 'controllerName'
       });
 
-      State.param('defaults', {
-        as: '_defaultParams'
-      });
-
-      State.param('404', {
-        as: '_404'
-      });
-
-      State.param('abstract', {
-        as: '_abstract'
-      });
-
-      bindMethod = _.bindMethod, isFunction = _.isFunction, extend = _.extend;
-
-      function State(options) {
-        this.mergeParams(options);
-        bindMethod(this, 'paramAssembler');
-        if (this.isAbstract() && this.is404()) {
-          throw new Error('State can be either abstract or 404 or none');
+      function State() {
+        State.__super__.constructor.apply(this, arguments);
+        this.id = _.generateId();
+        this.handles404 = !!this.handles404;
+        this.abstract = !!this.abstract;
+        this.isRoot = !this.base;
+        if (this.abstract && this.handles404) {
+          throw new Error("[" + Router + "] State can't handle 404 errors and be abstract at the same time");
+        }
+        if (this.pattern.regexBased && !this.ownRouteAssembler) {
+          throw new Error("[" + Router + "] To assemble " + this.name + " state's route from pattern which is based on regex you must define custom assembler");
         }
       }
 
-      State.prototype.getName = function() {
-        return this._name;
+      State.prototype.toString = function() {
+        return "state " + this.name;
       };
 
-      State.prototype.hasComputedControllerName = function() {
-        return isFunction(this._controller);
-      };
-
-      State.prototype.getControllerName = function() {
-        if (!this.hasComputedControllerName()) {
-          return this._controller;
-        }
-      };
-
-      State.prototype.computeControllerName = function() {
-        if (this.hasComputedControllerName()) {
-          return this._controller.apply(this, arguments);
-        }
-      };
-
-      State.prototype.isAbstract = function() {
-        return !!this._abstract;
-      };
-
-      State.prototype.is404 = function() {
-        return !!this._404;
-      };
-
-      State.prototype.isRoot = function() {
-        return !this.base;
-      };
-
-      State.prototype.getRoot = function() {
+      State.property('root', function() {
         var state;
         state = this;
         while (true) {
@@ -284,9 +311,9 @@
         if (state !== this) {
           return state;
         }
-      };
+      });
 
-      State.prototype.getChain = function() {
+      State.property('chain', function() {
         var chain, state;
         chain = [this];
         state = this;
@@ -294,222 +321,261 @@
           chain.unshift(state);
         }
         return chain;
-      };
+      });
 
       return State;
 
-    })();
-    Router.loadStateStore = function() {
-      return this.stateStore || (this.stateStore = new StateStore(this.stateStoreOptions));
-    };
-    StateStore = (function() {
-      var arrayPush;
+    })(BaseClass);
+    StateStore = (function(superClass) {
+      extend1(StateStore, superClass);
 
-      StateStore.include(StrictParameters);
+      StateStore.include(StateStoreFrameworkFeatures);
 
       StateStore.prototype.length = 0;
 
-      arrayPush = Array.prototype.push;
-
-      function StateStore(options) {
-        this.mergeParams(options);
+      function StateStore() {
+        StateStore.__super__.constructor.apply(this, arguments);
         this._byName = {};
       }
 
       StateStore.prototype.push = function(state) {
-        arrayPush.call(this, state);
-        this._byName[state.getName()] = state;
+        if (this.indexOf(state) === -1) {
+          Array.prototype.push.call(this, state);
+          this._byName[state.name] = state;
+        }
         return this;
       };
 
-      StateStore.prototype.get = function(name) {
-        return this._byName[name];
+      StateStore.prototype.get = function(state) {
+        if (_.isObject(state)) {
+          return state;
+        } else {
+          return this._byName[state];
+        }
+      };
+
+      StateStore.prototype.fetch = function(state) {
+        var _state;
+        _state = this.get(state);
+        if (!_state) {
+          throw new Error("[" + Router + "] State " + state + " does not exist!");
+        }
+        return _state;
       };
 
       StateStore.prototype.findOne = function(predicate, context) {
-        var j, len, state;
-        for (j = 0, len = this.length; j < len; j++) {
-          state = this[j];
+        var k, len, state;
+        for (k = 0, len = this.length; k < len; k++) {
+          state = this[k];
           if (predicate.call(context, state)) {
             return state;
           }
         }
       };
 
+      StateStore.prototype.indexOf = function(state) {
+        var _state, i, k, len, obj;
+        _state = this.get(state);
+        for (i = k = 0, len = this.length; k < len; i = ++k) {
+          obj = this[i];
+          if (obj === _state) {
+            return i;
+          }
+        }
+        return -1;
+      };
+
+      StateStore.prototype.map = function(callback) {
+        var parentsStack, thisApi;
+        parentsStack = [];
+        thisApi = function(name) {
+          var base, children, length, options, state;
+          length = arguments.length;
+          if (length > 1 && _.isFunction(arguments[1])) {
+            children = arguments[1];
+            state = Router.states.get(name);
+          } else if (length > 1 && _.isObject(arguments[1])) {
+            options = arguments[1];
+            base = _.last(parentsStack);
+            state = Router.createState(name, base, options);
+            if (length > 2) {
+              children = arguments[2];
+            }
+            Router.stateStore.push(state);
+          }
+          if (children) {
+            parentsStack.push(state);
+            children();
+            parentsStack.pop();
+          }
+          return Router;
+        };
+        return callback(thisApi);
+      };
+
       return StateStore;
 
-    })();
-    Router.loadStateBuilder = function() {
-      return this.stateBuilder || (this.stateBuilder = new StateBuilder(this.stateBuilderOptions));
-    };
-    StateBuilder = (function() {
-      var extend;
+    })(BaseClass);
+    StateBuilder = (function(superClass) {
+      extend1(StateBuilder, superClass);
 
-      StateBuilder.include(StrictParameters);
-
-      extend = _.extend;
-
-      function StateBuilder(options) {
-        this.mergeParams(options);
+      function StateBuilder() {
+        return StateBuilder.__super__.constructor.apply(this, arguments);
       }
 
       StateBuilder.prototype.build = function(name, base, data) {
         var basePattern, pattern;
         if (base) {
-          name = base.getName() + '.' + name;
+          name = base.name + '.' + name;
           basePattern = base.pattern;
         }
+        if (data['404'] && (data.pattern == null) && !data.path) {
+          data.pattern = '.*';
+        }
         pattern = (function() {
-          if (data.path != null) {
+          if (data.pattern != null) {
+            return Pattern.fromRegexSource(data.pattern, {
+              base: basePattern
+            });
+          } else if (data.path != null) {
             return Pattern.fromPath(data.path, {
               base: basePattern
             });
-          } else if (data.pattern != null) {
-            return Pattern.fromRegex(data.pattern, {
-              base: basePattern
-            });
-          } else if (data['404']) {
-            return Pattern.fromRegex('.*', {
-              base: basePattern
-            });
           } else {
-            throw new Error("Neither path nor pattern specified for state: '" + name + "'");
+            throw new Error("[" + Router + "] Neither path nor pattern specified for state " + name);
           }
         })();
-        extend(data, {
+        _.extend(data, {
           name: name,
           base: base,
           pattern: pattern
         });
-        return Router.createState(data);
+        return new State(data);
       };
 
       return StateBuilder;
 
-    })();
-    Router.loadStateMatcher = function() {
-      return this.stateMatcher || (this.stateMatcher = new StateMatcher(this.stateMatcherOptions));
+    })(BaseClass);
+    Router.createState = function(name) {
+      var base, length, options;
+      length = arguments.length;
+      if (length > 1) {
+        base = arguments[1];
+      }
+      if (_.isPlainObject(base)) {
+        options = base;
+        base = null;
+      } else {
+        if (_.isString(base)) {
+          base = Router.states.get(base);
+        }
+        if (length > 2) {
+          options = arguments[2];
+        }
+      }
+      return Router.stateBuilder.build(name, base, options);
     };
-    StateMatcher = (function() {
-      StateMatcher.include(StrictParameters);
+    StateMatcher = (function(superClass) {
+      extend1(StateMatcher, superClass);
 
-      function StateMatcher(options) {
-        this.mergeParams(options);
+      function StateMatcher() {
+        return StateMatcher.__super__.constructor.apply(this, arguments);
       }
 
-      StateMatcher.prototype.match = function(route, options) {
-        var match, store;
-        store = Router.loadStateStore();
-        match = store.findOne(function(state) {
-          return !state.isAbstract() && !state.is404() && state.pattern.test(route);
+      StateMatcher.prototype.match = function(route) {
+        var match, states;
+        states = Router.states;
+        match = states.findOne(function(state) {
+          return !state.abstract && !state.handles404 && state.pattern.test(route);
         });
-        match || (match = store.findOne(function(state) {
-          return state.is404();
+        match || (match = states.findOne(function(state) {
+          return state.handles404;
         }));
         if (!match) {
-          throw new Error("None of states matched route '" + route + "' and no 404 state was found");
+          throw new Error("[" + Router + "] None of states matched route '" + route + "' and no 404 state was found");
         }
         return match;
       };
 
       return StateMatcher;
 
-    })();
-    Pattern = (function() {
-      Pattern.include(StrictParameters);
+    })(BaseClass);
+    Pattern = (function(superClass) {
+      var extend;
+
+      extend1(Pattern, superClass);
+
+      Pattern.param('base');
 
       Pattern.param('source', {
-        as: '_source',
+        as: 'source',
         required: true
       });
 
       Pattern.param('path', {
-        as: '_ownPath'
+        as: 'ownPath'
       });
 
-      Pattern.param('base');
+      extend = _.extend;
 
-      function Pattern(data) {
+      function Pattern() {
         var baseSource, compiler, ref;
-        this.mergeParams(data);
-        if (baseSource = (ref = this.base) != null ? ref.getSource() : void 0) {
-          this._source = baseSource + (this._source ? '/' + this._source : '');
+        Pattern.__super__.constructor.apply(this, arguments);
+        if (baseSource = (ref = this.base) != null ? ref.source : void 0) {
+          this.source = baseSource + (this.source ? '/' + this.source : '');
         }
-        this._type = this.deriveType();
-        compiler = Router.loadPatternCompiler();
-        this.reRoute = compiler.compile(this._source, {
+        this.type = this.ownPath != null ? 'path' : 'regex';
+        this.regexBased = this.type === 'regex';
+        this.pathBased = this.type === 'path';
+        compiler = Router.patternCompiler;
+        this.reRoute = compiler.compile(this.source, {
           starts: true,
           ends: true
         });
-        this.reRouteBeginning = compiler.compile(this._source, {
+        this.reRouteIdentity = compiler.compile(this.source, {
           starts: true,
           ends: false
         });
       }
 
-      Pattern.prototype.deriveType = function() {
-        if (this._ownPath != null) {
-          return 'path';
-        } else {
-          return 'regex';
-        }
-      };
-
       Pattern.prototype.test = function(route) {
         return this.reRoute.test(route);
-      };
-
-      Pattern.prototype.testBeginning = function(route) {
-        return this.reRouteBeginning.test(route);
       };
 
       Pattern.prototype.match = function(route) {
         return XRegExp.exec(route, this.reRoute);
       };
 
-      Pattern.prototype.matchBeginning = function(route) {
-        return XRegExp.exec(route, this.reRouteBeginning);
-      };
-
-      Pattern.prototype.isRegexBased = function() {
-        return this._type === 'regex';
-      };
-
-      Pattern.prototype.isPathBased = function() {
-        return this._type === 'path';
-      };
-
-      Pattern.prototype.getSource = function() {
-        return this._source;
-      };
-
-      Pattern.prototype.getOwnPath = function() {
-        return this._ownPath;
+      Pattern.prototype.identity = function(route) {
+        return XRegExp.exec(route, this.reRouteIdentity);
       };
 
       Pattern.fromPath = function(path, options) {
         var decorator, source;
-        decorator = Router.loadPathDecorator();
+        decorator = Router.pathDecorator;
         source = decorator.preprocessParams(decorator.escape(path));
-        (options || (options = {})).path = path;
-        return this.fromRegex(source, options);
+        return this.fromRegexSource(source, extend({}, options, {
+          path: path
+        }));
       };
 
-      Pattern.fromRegex = function(source, options) {
-        (options || (options = {})).source = source;
-        return new this(options);
+      Pattern.fromRegexSource = function(source, options) {
+        return new this(extend({}, options, {
+          source: source
+        }));
       };
 
       return Pattern;
 
-    })();
-    Router.loadPatternCompiler = function() {
-      return this.patternCompiler || (this.patternCompiler = new PatternCompiler(this.pattermCompilerOptions));
-    };
-    PatternCompiler = (function() {
+    })(BaseClass);
+    PatternCompiler = (function(superClass) {
       var isEnabled;
 
-      PatternCompiler.include(StrictParameters);
+      extend1(PatternCompiler, superClass);
+
+      function PatternCompiler() {
+        return PatternCompiler.__super__.constructor.apply(this, arguments);
+      }
 
       PatternCompiler.prototype.rsQueryString = '(?:\\?(?<query>([\\s\\S]*)))?';
 
@@ -520,10 +586,6 @@
       PatternCompiler.prototype.rightBoundary = PatternCompiler.prototype.rsQueryString + '$';
 
       isEnabled = _.isEnabled;
-
-      function PatternCompiler(options) {
-        this.mergeParams(options);
-      }
 
       PatternCompiler.prototype.compile = function(source, options) {
         return XRegExp(this.bound(source, options));
@@ -548,22 +610,21 @@
 
       return PatternCompiler;
 
-    })();
-    Router.loadPathDecorator = function() {
-      return this.pathDecorator || (this.pathDecorator = new PathDecorator(this.pathDecoratorOptions));
-    };
-    PathDecorator = (function() {
-      PathDecorator.include(StrictParameters);
+    })(BaseClass);
+    PathDecorator = (function(superClass) {
+      extend1(PathDecorator, superClass);
 
-      function PathDecorator(options) {
-        this.mergeParams(options);
+      function PathDecorator() {
+        return PathDecorator.__super__.constructor.apply(this, arguments);
       }
+
+      PathDecorator.params('paramPreprocessor', 'reEscape', 'escapeReplacement');
 
       PathDecorator.prototype.reEscape = /[\-{}\[\]+?.,\\\^$|#\s]/g;
 
-      PathDecorator.prototype.escapeReplacement = '\\$&';
-
       PathDecorator.prototype.reParam = /(\()?(.)?(\*)?:(\w+)\)?/g;
+
+      PathDecorator.prototype.escapeReplacement = '\\$&';
 
       PathDecorator.prototype.paramPreprocessor = function(match, optional, token, splat, param) {
         var ret;
@@ -589,162 +650,159 @@
 
       return PathDecorator;
 
-    })();
-    Router.loadDispatcher = function() {
-      return this.dispatcher || (this.dispatcher = new Dispatcher(this.dispatcherOptions));
-    };
-    Dispatcher = (function() {
-      var beforeConstructor, extend;
+    })(BaseClass);
+    Router.once('start', function() {
+      Router.on('transitionStart', function(transition) {
+        return Router.dispatchedTransition = transition;
+      });
+      Router.on('transitionAbort', function(transition) {
+        Router.dispatchedTransition = null;
+        return Router.abortedTransition = transition;
+      });
+      Router.on('transitionSuccess', function(transition) {
+        Router.succeedTransition = transition;
+        Router.currentParams = transition.params;
+        Router.currentRoute = transition.route;
+        return Router.dispatchedTransition = null;
+      });
+      Router.on('stateEnterSuccess', function(state) {
+        Router.currentState = state;
+        return Router.notify('stateChange', state);
+      });
+      return Router.on('stateLeaveSuccess', function(state) {
+        return Router.currentState = state.base;
+      });
+    });
+    Router.once('debug', function() {
+      Router.on('transitionStart', function(transition) {
+        console.debug("[" + Router + "] Started " + transition);
+        return console.debug("[" + Router + "] Parameters", transition.params);
+      });
+      Router.on('transitionSuccess', function(transition) {
+        return console.debug("[" + Router + "] Succeed " + transition);
+      });
+      Router.on('stateEnterStart', function(state) {
+        return console.debug("[" + Router + "] Entering " + state);
+      });
+      return Router.on('stateLeaveStart', function(state) {
+        return console.debug("[" + Router + "] Leaving " + state);
+      });
+    });
+    Dispatcher = (function(superClass) {
+      extend1(Dispatcher, superClass);
 
-      Dispatcher.include(StrictParameters);
-
-      beforeConstructor = _.beforeConstructor, extend = _.extend;
-
-      function Dispatcher(options) {
-        this.mergeParams(options);
+      function Dispatcher() {
+        return Dispatcher.__super__.constructor.apply(this, arguments);
       }
 
-      Dispatcher.prototype.dispatch = function(transition, options) {
-        var currentState, currentStateChain, enterStates, error, ignoreStates, j, k, l, leaveStates, len, len1, len2, len3, m, nextState, nextStateChain, state;
-        Router.notify('transitionBegin', transition, options);
-        if (transition.isPrevented()) {
-          return false;
+      Dispatcher.prototype.dispatch = function(transition) {
+        var currentState, currentStateChain, enterStates, ignoreStates, k, l, leaveStates, len, len1, nextState, nextStateChain, ref, state;
+        if ((ref = Router.dispatchedTransition) != null) {
+          ref.abort();
         }
-        nextState = transition.toState;
-        currentState = transition.fromState;
-        nextStateChain = (nextState != null ? nextState.getChain() : void 0) || [];
-        currentStateChain = (currentState != null ? currentState.getChain() : void 0) || [];
+        Router.notify('transitionStart', transition);
+        if (transition.prevented) {
+          return;
+        }
+        currentState = Router.currentState;
+        currentStateChain = (currentState != null ? currentState.chain : void 0) || [];
+        nextState = transition.state;
+        nextStateChain = (nextState != null ? nextState.chain : void 0) || [];
         enterStates = [];
         leaveStates = [];
         ignoreStates = [];
-        try {
-          for (j = 0, len = currentStateChain.length; j < len; j++) {
-            state = currentStateChain[j];
-            if (indexOf.call(nextStateChain, state) >= 0) {
-              if (!this.needToReloadState(state, transition)) {
-                ignoreStates.push(state);
-              } else {
-                leaveStates.unshift(state);
-                enterStates.push(state);
-              }
-            } else {
+        for (k = 0, len = currentStateChain.length; k < len; k++) {
+          state = currentStateChain[k];
+          if (indexOf.call(nextStateChain, state) >= 0) {
+            if (this.mustReloadState(state, transition)) {
               leaveStates.unshift(state);
-            }
-          }
-          for (k = 0, len1 = nextStateChain.length; k < len1; k++) {
-            state = nextStateChain[k];
-            if ((indexOf.call(enterStates, state) < 0) && (indexOf.call(ignoreStates, state) < 0)) {
               enterStates.push(state);
+            } else {
+              ignoreStates.push(state);
             }
+          } else {
+            leaveStates.unshift(state);
           }
-          for (l = 0, len2 = leaveStates.length; l < len2; l++) {
-            state = leaveStates[l];
-            this.leaveState(state, transition);
-          }
-          for (m = 0, len3 = enterStates.length; m < len3; m++) {
-            state = enterStates[m];
-            this.enterState(state, transition);
-          }
-        } catch (_error) {
-          error = _error;
-          Router.notify('transitionError', transition, extend({}, options, {
-            error: error
-          }));
-          return false;
         }
-        Router.notify('transitionEnd', transition, options);
-        return true;
+        for (l = 0, len1 = nextStateChain.length; l < len1; l++) {
+          state = nextStateChain[l];
+          if ((indexOf.call(enterStates, state) < 0) && (indexOf.call(ignoreStates, state) < 0)) {
+            enterStates.push(state);
+          }
+        }
+        while (state = leaveStates.shift()) {
+          this.leaveState(state, transition);
+          if (transition.aborted) {
+            return;
+          }
+        }
+        while (state = enterStates.shift()) {
+          this.enterState(state, transition);
+          if (transition.aborted) {
+            return;
+          }
+        }
+        Router.notify('transitionSuccess', transition);
       };
 
       Dispatcher.prototype.enterState = function(state, transition) {
-        var ctrl, ctrlClass, ctrlName, ctrlStore, parentCtrl, rootCtrl, rootState;
-        this._storeParams(state, state.extractBeginningParams(transition.route));
-        ctrlStore = Router.loadControllerStore();
-        ctrlName = this._deriveControllerName(state, transition.toParams, transition);
-        ctrlClass = ctrlName && ctrlStore.getClass(ctrlName);
+        var controller, ctrlClass, parentCtrl, ref, rootCtrl, rootState;
+        Router.notify('stateEnterStart', state, transition);
+        ctrlClass = Router.findController(state.controllerName, transition.params, transition);
         if (ctrlClass) {
-          rootState = state.getRoot();
-          rootCtrl = rootState && this._getCtrl(rootState);
-          parentCtrl = state.base && this._getCtrl(state.base);
-          ctrlClass = beforeConstructor(ctrlClass, function() {
+          rootState = state.root;
+          rootCtrl = rootState != null ? rootState.__controller : void 0;
+          parentCtrl = (ref = state.base) != null ? ref.__controller : void 0;
+          ctrlClass = _.beforeConstructor(ctrlClass, function() {
             this.rootController = rootCtrl || void 0;
             return this.parentController = parentCtrl || void 0;
           });
-          ctrl = new ctrlClass(transition.toParams, transition);
-          this._storeCtrl(state, ctrl);
-          if (typeof ctrl.enter === "function") {
-            ctrl.enter(transition.toParams, transition);
+          controller = new ctrlClass(transition.params, transition);
+          if (typeof controller.enter === "function") {
+            controller.enter(transition.toParams, transition);
           }
         }
-        state.notify('enter', state, transition);
+        if (!transition.aborted) {
+          state.__controller = controller;
+          state.__paramsIdentity = state.identityParams(transition.route);
+          Router.notify('stateEnterSuccess', state, transition);
+        }
       };
 
       Dispatcher.prototype.leaveState = function(state, transition) {
-        var ctrl;
-        ctrl = this._getCtrl(state);
-        this._removeParams(state);
-        this._removeCtrl(state);
-        if (ctrl != null) {
-          if (typeof ctrl.leave === "function") {
-            ctrl.leave();
+        var controller;
+        Router.notify('stateLeaveStart', state, transition);
+        controller = state.__controller;
+        if (controller != null) {
+          if (typeof controller.leave === "function") {
+            controller.leave(transition.params, transition);
           }
         }
-        state.notify('leave', state, transition);
-      };
-
-      Dispatcher.prototype.needToReloadState = function(state, transition) {
-        var lastParams, nextParams;
-        lastParams = this._getParams(state);
-        nextParams = state.extractBeginningParams(transition.route);
-        return (lastParams != null ? lastParams.__version : void 0) !== (nextParams != null ? nextParams.__version : void 0);
-      };
-
-      Dispatcher.prototype._storeParams = function(state, params) {
-        return state._lastParams = params;
-      };
-
-      Dispatcher.prototype._storeCtrl = function(state, ctrl) {
-        return state._lastCtrl = ctrl;
-      };
-
-      Dispatcher.prototype._removeParams = function(state) {
-        return state._lastParams = void 0;
-      };
-
-      Dispatcher.prototype._removeCtrl = function(state) {
-        return state._lastCtrl = void 0;
-      };
-
-      Dispatcher.prototype._getParams = function(state) {
-        return state._lastParams;
-      };
-
-      Dispatcher.prototype._getCtrl = function(state) {
-        return state._lastCtrl;
-      };
-
-      Dispatcher.prototype._deriveControllerName = function(state, params, transition) {
-        if (state.hasComputedControllerName()) {
-          return state.computeControllerName(params, transition);
-        } else {
-          return state.getControllerName();
+        if (!transition.aborted) {
+          delete state.__paramsIdentity;
+          delete state.__controller;
+          Router.notify('stateLeaveSuccess', state, transition);
         }
+      };
+
+      Dispatcher.prototype.mustReloadState = function(state, transition) {
+        var a, b, ref;
+        a = state.__paramsIdentity;
+        b = state.identityParams(transition.route);
+        return false === (((ref = Router.options) != null ? ref.reloadOnQueryChange : void 0) !== true ? _.isEqual(_.omit(a, 'query'), _.omit(b, 'query')) : _.isEqual(a, b));
       };
 
       return Dispatcher;
 
-    })();
-    Router.loadParamHelper = function() {
-      return this.paramHelper || (this.paramHelper = new ParamHelper(this.paramHelperOptions));
-    };
-    ParamHelper = (function() {
-      ParamHelper.include(StrictParameters);
+    })(BaseClass);
+    ParamHelper = (function(superClass) {
+      extend1(ParamHelper, superClass);
+
+      function ParamHelper() {
+        return ParamHelper.__super__.constructor.apply(this, arguments);
+      }
 
       ParamHelper.prototype.reArrayIndex = /^[0-9]+$/;
-
-      function ParamHelper(options) {
-        this.mergeParams(options);
-      }
 
       ParamHelper.prototype.refersToRegexMatch = function(param) {
         return this.reArrayIndex.test(param) || (param === 'index' || param === 'input');
@@ -754,272 +812,321 @@
         return param === 'query';
       };
 
+      ParamHelper.prototype.encode = function(param, value) {
+        return encodeURIComponent(value);
+      };
+
+      ParamHelper.prototype.encodeSplat = function(param, value) {
+        return encodeURI(value);
+      };
+
       ParamHelper.prototype.decode = function(param, value) {
         return decodeURIComponent(value);
       };
 
-      ParamHelper.prototype.hashCode = function(string) {
-        var char, hash, i, j, ref;
-        hash = 0;
-        for (i = j = 0, ref = string.length; 0 <= ref ? j < ref : j > ref; i = 0 <= ref ? ++j : --j) {
-          char = string.charCodeAt(i);
-          hash = ((hash << 5) - hash) + char;
-          hash = hash & hash;
-        }
-        return hash;
-      };
-
       return ParamHelper;
 
-    })();
-    Router.loadControllerStore = function() {
-      return this.controllerStore || (this.controllerStore = new ControllerStore(this.controllerStoreOptions));
-    };
-    ControllerStore = (function() {
-      ControllerStore.include(StrictParameters);
-
-      function ControllerStore(options) {
-        this.mergeParams(options);
-        this._classByName = {};
-      }
-
-      ControllerStore.prototype.getClass = function(name) {
-        return this._classByName[name];
-      };
-
-      ControllerStore.prototype.registerClass = function(name, klass) {
-        return this._classByName[name] = klass;
-      };
-
-      return ControllerStore;
-
-    })();
-    Router.createTransition = function(options) {
-      return new Transition(options);
-    };
-    Transition = (function() {
-      Transition.include(StrictParameters);
+    })(BaseClass);
+    Router.on('debug', function() {
+      Router.on('transitionAbort', function(transition) {
+        return console.debug("[" + Router + "] Aborted " + transition);
+      });
+      return Router.on('transitionPrevent', function(transition) {
+        return console.debug("[" + Router + "] Prevented " + transition);
+      });
+    });
+    Transition = (function(superClass) {
+      extend1(Transition, superClass);
 
       Transition.param('fromState');
 
-      Transition.param('toState', {
-        required: true
-      });
-
       Transition.param('fromParams');
 
-      Transition.param('toParams', {
-        alias: 'params'
-      });
+      Transition.param('fromRoute');
 
-      Transition.param('route', {
+      Transition.param('toState', {
+        alias: 'state',
         required: true
       });
 
-      function Transition(options) {
-        this.mergeParams(options);
+      Transition.param('toParams', {
+        alias: 'params',
+        required: true
+      });
+
+      Transition.param('toRoute', {
+        alias: 'route',
+        required: true
+      });
+
+      function Transition() {
+        Transition.__super__.constructor.apply(this, arguments);
+        this.prevented = false;
+        this.aborted = false;
       }
 
       Transition.prototype.prevent = function() {
-        return this._prevented = true;
+        if (!this.prevented) {
+          Router.notify('transitionPrevent', this);
+        }
+        this.prevented = true;
+        return this;
       };
 
-      Transition.prototype.isPrevented = function() {
-        return !!this._prevented;
+      Transition.prototype.abort = function() {
+        if (!this.aborted) {
+          Router.notify('transitionAbort', this);
+        }
+        this.aborted = true;
+        return this;
+      };
+
+      Transition.prototype.dispatch = function() {
+        return Router.dispatcher.dispatch(this);
+      };
+
+      Transition.prototype.retry = function() {
+        return this.dispatch();
+      };
+
+      Transition.prototype.toString = function() {
+        var s;
+        s = "transition";
+        s += this.fromState ? " " + this.fromState.name : ' <initial>';
+        s += " -> " + this.toState.name;
+        return s;
       };
 
       return Transition;
 
-    })();
-    Router.loadHistory = function() {
-      return this.history || (this.history = new History(this.historyOptions));
-    };
-    History = (function() {
-      var bindMethod, extend, isEnabled, onceMethod;
+    })(BaseClass);
+    Router.once('start', function() {
+      return Router.on('routeChange', function(route) {
+        var state;
+        state = Router.stateMatcher.match(route);
+        return Router.transition(state, state.params(route), route);
+      });
+    });
+    Router.on('start', function() {
+      return Router.history.start();
+    });
+    Router.on('stop', function() {
+      return Router.history.stop();
+    });
+    Router.once('debug', function() {
+      Router.once('routeChange', function(route) {
+        console.debug("[" + Router + "] Started with route '" + route + "'");
+        return Router.on('routeChange', function(route) {
+          return console.debug("[" + Router + "] Route changed '" + route + "'");
+        });
+      });
+      Router.on('fragmentUpdate', function(fragment, replace) {
+        return console.debug(("[" + Router + "] ") + (replace ? "Replaced hash in history with '" + fragment + "'" : "Set hash to history '" + fragment + "'"));
+      });
+      return Router.on('pathUpdate', function(path, replace) {
+        return console.debug(("[" + Router + "] ") + (replace ? "Replaced state in history with '" + path + "'" : "Pushed state to history '" + path + "'"));
+      });
+    });
+    History = (function(superClass) {
+      extend1(History, superClass);
 
-      History.prototype.reFragment = /#(.*)$/;
-
-      History.include(PublisherSubscriber);
-
-      History.include(StrictParameters);
-
-      History.prototype.options = function() {
-        return {
-          hashChange: true,
-          interval: 50,
-          load: true
-        };
+      History.derivePath = function(obj) {
+        return decodeURI((obj.pathname + obj.search).replace(/%25/g, '%2525')).replace(/^\/+/, '');
       };
 
-      extend = _.extend, bindMethod = _.bindMethod, onceMethod = _.onceMethod, isEnabled = _.isEnabled;
-
-      function History(options) {
+      History.deriveFragment = function(obj) {
         var ref;
-        this.mergeParams(options);
-        onceMethod(this, 'start');
-        bindMethod(this, 'check');
-        this.setGlobals();
-        this.supportsPushState = ((ref = this.history) != null ? ref.pushState : void 0) != null;
-        this.pushStateBased = this.supportsPushState && (this.options.pushState != null);
-        this.hashChangeBased = !this.pushStateBased;
-      }
+        return (((ref = obj.href.match(/#(.*)$/)) != null ? ref[1] : void 0) || '') + obj.search;
+      };
 
-      History.prototype.setGlobals = function() {
-        var ref, ref1;
+      History.normalizeRoute = function(route) {
+        var pre;
+        pre = indexOf.call(route, '?') >= 0 ? route.replace(/\/+\?/, '?') : route.replace(/\/+$/, '');
+        return pre.replace(/^(\/|#)+/, '');
+      };
+
+      function History() {
+        var ref, ref1, ref2;
+        this.options = {};
+        this.options.load = true;
+        this.options.interval = 50;
+        History.__super__.constructor.apply(this, arguments);
+        _.onceMethod(this, 'start');
+        _.bindMethod(this, 'check');
         this.document = (typeof document !== "undefined" && document !== null) && document;
         this.window = (typeof window !== "undefined" && window !== null) && window;
         this.location = (ref = this.window) != null ? ref.location : void 0;
-        return this.history = (ref1 = this.window) != null ? ref1.history : void 0;
-      };
+        this.history = (ref1 = this.window) != null ? ref1.history : void 0;
+        this.supportsPushState = ((ref2 = this.history) != null ? ref2.pushState : void 0) != null;
+        this.supportsHashChange = 'onhashchange' in this.window;
+        this.pushStateBased = this.supportsPushState && this.options.pushState !== false;
+        this.hashChangeBased = !this.pushStateBased && this.supportsHashChange && this.options.hashChange !== false;
+        this.started = false;
+      }
+
+      History.property('path', function() {
+        return this.constructor.derivePath(this.location);
+      });
+
+      History.property('fragment', function() {
+        return this.constructor.deriveFragment(this.location);
+      });
+
+      History.property('route', function() {
+        if (this.pushStateBased) {
+          return this.path;
+        } else {
+          return this.fragment;
+        }
+      });
 
       History.prototype.start = function() {
-        this.route = this.getRoute();
+        this.ensureNotStarted();
         if (this.pushStateBased) {
           Router.$(this.window).on('popstate', this.check);
-        } else if ('onhashchange' in this.window) {
+        } else if (this.hashChangeBased) {
           Router.$(this.window).on('hashchange', this.check);
         } else {
-          setInterval(this.check, this.interval);
+          this._intervalId = setInterval(this.check, this.options.interval);
         }
+        this.started = true;
         if (this.options.load) {
-          return this.load({
-            route: this.route
-          });
+          this.load(this.route);
         }
+        return this;
+      };
+
+      History.prototype.stop = function() {
+        this.ensureStarted();
+        Router.$(this.window).off('popstate', this.check);
+        Router.$(this.window).off('hashchange', this.check);
+        if (this._intervalId) {
+          clearInterval(this._intervalId);
+          this._intervalId = null;
+        }
+        this.started = false;
+        return this;
       };
 
       History.prototype.check = function(e) {
-        var route;
-        route = this.getRoute();
-        if (route !== this.route) {
-          return this.load({
-            route: route
-          });
+        if (this.ensureStarted() && this.route !== this.loadedRoute) {
+          this.load(this.route);
         }
+        return this;
       };
 
-      History.prototype.load = function(arg) {
-        var fixed, fromParams, fromState, ref, result, route, toParams, toState, transition;
-        route = arg.route;
-        fixed = this._removeRouteAmbiguity(route);
-        if (route !== fixed) {
-          return this.navigate(fixed, {
+      History.prototype.load = function(route) {
+        var normalized;
+        this.ensureStarted();
+        normalized = this.constructor.normalizeRoute(route);
+        if (route !== normalized) {
+          return this.navigate(normalized, {
             replace: true,
             load: true
           });
         }
-        this.route = route;
-        fromState = Router.currentState;
-        fromParams = (ref = Router.previousTransition) != null ? ref.toParams : void 0;
-        toState = Router.loadStateMatcher().match(route);
-        toParams = (toState != null ? toState.extractParams(route) : void 0) || {};
-        transition = Router.createTransition({
-          fromState: fromState,
-          fromParams: fromParams,
-          toState: toState,
-          toParams: toParams,
-          route: route
-        });
-        result = Router.loadDispatcher().dispatch(transition);
-        if (result) {
-          Router.previousState = Router.currentState;
-          Router.previousTransition = Router.currentTransition;
-          Router.currentState = toState;
-          Router.currentTransition = transition;
-        }
-        return result;
+        this.loadedRoute = route;
+        Router.notify('routeChange', route);
+        return true;
       };
 
       History.prototype.navigate = function(route, options) {
-        var result;
-        route = this._removeRouteAmbiguity(route);
-        if (this.route === route) {
-          return;
-        }
-        if (!options || options === true) {
-          options = {
-            load: !!options
-          };
-        }
-        result = !options.load || this.load({
-          route: route
-        });
-        if (result) {
-          this.route = route;
+        this.ensureStarted();
+        route = this.constructor.normalizeRoute(route);
+        if (route !== this.loadedRoute) {
+          this.loadedRoute = route;
+          if (!options || options === true) {
+            options = {
+              load: !!options
+            };
+          }
           if (this.pushStateBased) {
             this._updatePath(route, options.replace);
           } else {
             this._updateFragment(route, options.replace);
           }
-        }
-        return result;
-      };
-
-      History.prototype.getPath = function() {
-        return decodeURI(this.location.pathname + this.location.search);
-      };
-
-      History.prototype.getFragment = function() {
-        var ref;
-        return (((ref = this.location.href.match(this.reFragment)) != null ? ref[1] : void 0) || '') + this.location.search;
-      };
-
-      History.prototype.getRoute = function(options) {
-        if (this.pushStateBased) {
-          return this.getPath(options);
+          return !options.load || this.load(route);
         } else {
-          return this.getFragment(options);
+          return false;
         }
       };
 
       History.prototype._updatePath = function(route, replace) {
         var method;
         method = replace ? 'replaceState' : 'pushState';
-        return this.history[method]({}, this.document.title, '/' + route);
+        this.history[method]({}, this.document.title, '/' + route);
+        Router.notify('pathUpdate', route, replace);
       };
 
       History.prototype._updateFragment = function(route, replace) {
         var href;
         route = route.replace(/\?.*$/, '');
         if (replace) {
-          href = location.href.replace(/#.*$/, '');
-          location.replace(href + '#' + route);
+          href = this.location.href.replace(/(javascript:|#).*$/, '');
+          this.location.replace(href + '#' + route);
         } else {
-          location.hash = '#' + route;
+          this.location.hash = '#' + route;
         }
+        Router.notify('fragmentUpdate', replace);
       };
 
-      History.prototype._removeRouteAmbiguity = function(route) {
-        route = indexOf.call(route, '?') >= 0 ? route.replace(/\/+\?/, '?') : route.replace(/\/+$/, '');
-        return route.replace(/^\/+/, '');
+      History.prototype.ensureStarted = function() {
+        if (!this.started) {
+          throw new Error("[" + Router + "] History hasn't been started!");
+        }
+        return true;
+      };
+
+      History.prototype.ensureNotStarted = function() {
+        if (this.started) {
+          throw new Error("[" + Router + "] History has already been started!");
+        }
+        return true;
       };
 
       return History;
 
-    })();
-    Router.loadLinksInterceptor = function() {
-      return this.linksInterceptor || (this.linksInterceptor = new LinksInterceptor(this.linksInterceptorOptions));
+    })(BaseClass);
+    Router.on('start', function() {
+      return Router.linksInterceptor.start();
+    });
+    Router.on('stop', function() {
+      return Router.linksInterceptor.stop();
+    });
+    Router.reURIScheme = /^(\w+):(?:\/\/)?/;
+    Router.matchURIScheme = function(str) {
+      var ref;
+      return str != null ? typeof str.match === "function" ? (ref = str.match(Router.reURIScheme)) != null ? ref[0] : void 0 : void 0 : void 0;
     };
-    LinksInterceptor = (function() {
-      var bindMethod;
+    LinksInterceptor = (function(superClass) {
+      extend1(LinksInterceptor, superClass);
 
-      LinksInterceptor.include(StrictParameters);
-
-      LinksInterceptor.prototype.reUriScheme = /^(\w+):(?:\/\/)?/;
-
-      bindMethod = _.bindMethod;
-
-      function LinksInterceptor(options) {
-        this.mergeParams(options);
-        bindMethod(this, 'intercept');
+      function LinksInterceptor() {
+        LinksInterceptor.__super__.constructor.apply(this, arguments);
+        _.bindMethod(this, 'intercept');
+        this.started = false;
       }
 
       LinksInterceptor.prototype.start = function() {
-        return Router.$(document).on('click', 'a', this.intercept);
+        if (this.started) {
+          throw new Error("[" + Router + "] Links interceptor has already been started!");
+        }
+        Router.$(document).on('click', 'a', this.intercept);
+        this.started = true;
+        return this;
+      };
+
+      LinksInterceptor.prototype.stop = function() {
+        if (!this.started) {
+          throw new Error("[" + Router + "] Links interceptor hasn't been started!");
+        }
+        Router.$(document).off('click', 'a', this.intercept);
+        this.started = false;
+        return this;
       };
 
       LinksInterceptor.prototype.intercept = function(e) {
-        var $link, href, intercept, pathname, ref;
+        var $link, href, intercept, ref, route;
         if (e.which !== 1) {
           return;
         }
@@ -1031,34 +1138,36 @@
         if (intercept === 'false') {
           return;
         }
-        if (this.reUriScheme.test(href)) {
+        if (Router.matchURIScheme(href) != null) {
           return;
         }
         e.preventDefault();
-        pathname = $link[0].pathname.replace(/^\//, '');
-        return Router.loadHistory().navigate(pathname, true);
+        route = Router.history.pushStateBased ? History.derivePath($link[0]) : History.deriveFragment($link[0]);
+        Router.navigate(route, true);
       };
 
       return LinksInterceptor;
 
-    })();
-    return _.extend(Router, {
+    })(BaseClass);
+    _.extend(Router, {
       State: State,
       StateStore: StateStore,
       StateBuilder: StateBuilder,
-      StateDefaultsAccess: StateDefaultsAccess,
-      StateParametersExtract: StateParametersExtract,
+      StateDefaultParameters: StateDefaultParameters,
+      StateRouteParameters: StateRouteParameters,
       StateRouteAssemble: StateRouteAssemble,
+      StateStoreFrameworkFeatures: StateStoreFrameworkFeatures,
       Dispatcher: Dispatcher,
-      ControllerStore: ControllerStore,
       History: History,
       PathDecorator: PathDecorator,
       PatternCompiler: PatternCompiler,
       StateMatcher: StateMatcher,
       Transition: Transition,
       Pattern: Pattern,
-      ParamHelper: ParamHelper
+      ParamHelper: ParamHelper,
+      LinksInterceptor: LinksInterceptor
     });
+    return Router;
   });
 
 }).call(this);

@@ -4,49 +4,51 @@ class StateStore extends BaseClass
 
   length: 0
 
-  nativeArrayPush = Array::push
-
-  {last, isFunction, isObject} = _
-
   constructor: ->
     super
     @_byName = {}
 
   push: (state) ->
     if @indexOf(state) is -1
-      nativeArrayPush.call(this, state)
+      Array::push.call(this, state)
       @_byName[state.name] = state
     this
 
-  get: (name) ->
-    @_byName[name]
+  get: (state) ->
+    if _.isObject(state) then state else @_byName[state]
 
-  byName: (name) ->
-    @_byName[name]
+  fetch: (state) ->
+    _state = @get(state)
+
+    unless _state
+      throw new Error "[#{Router}] State #{state} does not exist!"
+
+    _state
 
   findOne: (predicate, context) ->
     for state in this when predicate.call(context, state)
       return state
 
   indexOf: (state) ->
+    _state = @get(state)
     for obj, i in this
-      retur i if obj is state
+      return i if obj is _state
     -1
 
   map: (callback) ->
     parentsStack  = []
-    createAndPush = (name) ->
+    thisApi       = (name) ->
       length = arguments.length
 
       # Support state('root', ->) signature
-      if length > 1 and isFunction(arguments[1])
+      if length > 1 and _.isFunction(arguments[1])
         children  = arguments[1]
         state     = Router.states.get(name)
 
       # Support state('root', {}, ->) signature
-      else if length > 1 and isObject(arguments[1])
+      else if length > 1 and _.isObject(arguments[1])
         options   = arguments[1]
-        base      = last(parentsStack)
+        base      = _.last(parentsStack)
         state     = Router.createState(name, base, options)
         children  = arguments[2] if length > 2
         Router.stateStore.push(state)
@@ -56,4 +58,4 @@ class StateStore extends BaseClass
         children()
         parentsStack.pop()
       Router
-    callback.call(null, createAndPush)
+    callback(thisApi)

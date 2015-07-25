@@ -1,40 +1,46 @@
-# TODO Configurable reload on query change
-class Router
+_.extend(Router, PublisherSubscriber.InstanceMembers)
 
-  {last, isString, extend} = _
+Router.$ = $
 
-  extend(this, PublisherSubscriber.InstanceMembers or PublisherSubscriber)
+Router.toString = -> 'StateRouter'
 
-  @$: $
+Router.start = ->
+  Router.notify 'debug'
+  Router.notify 'start'
 
-  @controller = (name, klass) ->
-    Router.loadControllerStore().registerClass(name, klass)
+Router.stop = ->
+  Router.notify 'stop'
 
-  @state = do ->
-    parentsStack = []
+Router.url = (state, params) ->
+  c = if Router.history.pushStateBased then '/' else '#'
+  c + Router.states.fetch(state).route(params)
 
-    (name, options, children) ->
-      base  = last(parentsStack)
-      state = Router.loadStateBuilder().build(name, base, options)
-      Router.loadStateStore().push(state)
+Router.go = (state, params) ->
+  Router.navigate(Router.url(state, params), true)
 
-      if children
-        parentsStack.push(state)
-        children()
-        parentsStack.pop()
-      Router
+Router.navigate = (route, options) ->
+  Router.history.navigate(route, options)
 
-  @map = (callback) ->
-    callback.call(this, Router.state)
+Router.transition = (state, params) ->
+  fromState  = Router.currentState
+  fromParams = Router.currentParams
+  fromRoute  = Router.currentRoute
+  toState    = Router.states.fetch(state)
+  toParams   = params || {}
+  toRoute    = Router.history.route
 
-  @urlTo = (stateName, params) ->
-    unless state = Router.loadStateStore().get(stateName)
-      throw new Error("State '#{stateName}' wasn't found")
+  transition = new Transition({fromState, fromParams, fromRoute, toState, toParams, toRoute})
+  transition.dispatch()
 
-    (if Router.history.hashChangeBased
-      '#'
-    else '/') + state.assembleRoute(params)
+Router.controllerLookupNamespace = this
 
-  @start: ->
-    Router.loadHistory().start()
-    Router.loadLinksInterceptor().start()
+Router.controllerLookup = (name) ->
+  ns = _.result(Router, 'controllerLookupNamespace')
+  ns["#{name}Controller"] or ns[name] or ns["#{name.classCase()}Controller"] or ns[name.classCase()]
+
+Router.findController = (arg, rest...) ->
+  Class = if _.isFunction(arg) then arg(rest...)
+  else Router.controllerLookup(arg)
+
+  Class = Router.controllerLookup(Class) if _.isString(Class)
+  Class

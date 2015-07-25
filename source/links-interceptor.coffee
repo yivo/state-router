@@ -1,22 +1,35 @@
-class LinksInterceptor extends BaseClass
+Router.on 'start', ->
+  Router.linksInterceptor.start()
 
-  {bindMethod} = _
+Router.on 'stop', ->
+  Router.linksInterceptor.stop()
+
+Router.reURIScheme = /^(\w+):(?:\/\/)?/
+
+Router.matchURIScheme = (str) ->
+  str?.match?(Router.reURIScheme)?[0]
+
+class LinksInterceptor extends BaseClass
 
   constructor: ->
     super
-    bindMethod(this, 'intercept')
+    _.bindMethod(this, 'intercept')
     @started = false
 
   start: ->
-    unless @started
-      Router.$(document).on('click', 'a', @intercept)
-      @started = true
+    if @started
+      throw new Error "[#{Router}] Links interceptor has already been started!"
+
+    Router.$(document).on('click', 'a', @intercept)
+    @started = true
     this
 
   stop: ->
-    if @started
-      Router.$(document).off('click', 'a', @intercept)
-      @started = false
+    unless @started
+      throw new Error "[#{Router}] Links interceptor hasn't been started!"
+
+    Router.$(document).off('click', 'a', @intercept)
+    @started = false
     this
 
   intercept: (e) ->
@@ -25,24 +38,25 @@ class LinksInterceptor extends BaseClass
 
     $link = Router.$(e.currentTarget)
 
-    # Get the href; stop processing if there isn't one
+    # Get the href
+    # Stop processing if there isn't one
     return unless href = $link.attr('href')
 
     # Determine if we're supposed to bypass the link
     # based on its attributes
-
     intercept = $link.attr('intercept') ? $link.data('intercept')
     return if intercept is 'false'
 
-    # Return if the URL is absolute, or if the protocol is mailto or javascript
-    return if Router.matchUriScheme(href)?
+    # Return if the URI is absolute, or if URI contains scheme
+    return if Router.matchURIScheme(href)?
 
     # If we haven't been stopped yet, then we prevent the default action
     e.preventDefault()
 
-    # Get the computed pathname of the link, removing
-    # the leading slash. Regex required for IE8 support
-    pathname = $link[0].pathname.replace(/^\//, '')
+    route = if Router.history.pushStateBased
+      History.derivePath($link[0])
+    else
+      History.deriveFragment($link[0])
 
-    Router.history.navigate(pathname, true)
+    Router.navigate(route, true)
     return

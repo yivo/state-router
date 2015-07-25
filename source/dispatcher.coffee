@@ -1,114 +1,120 @@
-Router.loadDispatcher = ->
-  @dispatcher ||= new Dispatcher(@dispatcherOptions)
+Router.once 'start', ->
+  Router.on 'transitionStart', (transition) ->
+    Router.dispatchedTransition = transition
 
-class Dispatcher
+  Router.on 'transitionAbort', (transition) ->
+    Router.dispatchedTransition = null
+    Router.abortedTransition    = transition
 
-  @include StrictParameters
+  Router.on 'transitionSuccess', (transition) ->
+    Router.succeedTransition    = transition
+    Router.currentParams        = transition.params
+    Router.currentRoute         = transition.route
+    Router.dispatchedTransition = null
 
-  {beforeConstructor, extend} = _
+  Router.on 'stateEnterSuccess', (state) ->
+    Router.currentState = state
+    Router.notify 'stateChange', state
 
-  constructor: (options) ->
-    @mergeParams(options)
+  Router.on 'stateLeaveSuccess', (state) ->
+    Router.currentState = state.base
 
-  dispatch: (transition, options) ->
-    Router.notify('transitionBegin', transition, options)
+Router.once 'debug', ->
+  Router.on 'transitionStart', (transition) ->
+    console.debug "[#{Router}] Started #{transition}"
+    console.debug "[#{Router}] Parameters", transition.params
 
-    if transition.isPrevented()
-      return false
+  Router.on 'transitionSuccess', (transition) ->
+    console.debug "[#{Router}] Succeed #{transition}"
 
-    nextState           = transition.toState
-    currentState        = transition.fromState
-    nextStateChain      = nextState?.getChain() or []
-    currentStateChain   = currentState?.getChain() or []
+  Router.on 'stateEnterStart', (state) ->
+    console.debug "[#{Router}] Entering #{state}"
+
+  Router.on 'stateLeaveStart', (state) ->
+    console.debug "[#{Router}] Leaving #{state}"
+
+class Dispatcher extends BaseClass
+
+  dispatch: (transition) ->
+    Router.dispatchedTransition?.abort()
+
+    # You can prevent from transitioning in this hook, for example.
+    Router.notify('transitionStart', transition)
+
+    # Do absolutely nothing if transition was prevented.
+    # You can retry transition by doing `transition.retry()`.
+    return if transition.prevented
+
+    currentState        = Router.currentState
+    currentStateChain   = currentState?.chain or []
+    nextState           = transition.state
+    nextStateChain      = nextState?.chain or []
+
     enterStates         = []
     leaveStates         = []
     ignoreStates        = []
 
-    try
-      for state in currentStateChain
-        if state in nextStateChain
-          if not @needToReloadState(state, transition)
-            ignoreStates.push(state)
-          else
-            leaveStates.unshift(state)
-            enterStates.push(state)
-        else
+    for state in currentStateChain
+      if state in nextStateChain
+        if @mustReloadState(state, transition)
           leaveStates.unshift(state)
-
-      for state in nextStateChain
-        if (state not in enterStates) and (state not in ignoreStates)
           enterStates.push(state)
+        else
+          ignoreStates.push(state)
+      else
+        leaveStates.unshift(state)
 
-      for state in leaveStates
-        @leaveState(state, transition)
+    for state in nextStateChain
+      if (state not in enterStates) and (state not in ignoreStates)
+        enterStates.push(state)
 
-      for state in enterStates
-        @enterState(state, transition)
-    catch error
-      Router.notify('transitionError', transition, extend({}, options, {error}))
-      return false
+    while state = leaveStates.shift()
+      @leaveState(state, transition)
+      return if transition.aborted
 
-    Router.notify('transitionEnd', transition, options)
-    true
+    while state = enterStates.shift()
+      @enterState(state, transition)
+      return if transition.aborted
+
+    Router.notify('transitionSuccess', transition)
+    return
 
   enterState: (state, transition) ->
-    @_storeParams(state, state.extractBeginningParams(transition.route))
-
-    ctrlStore = Router.loadControllerStore()
-    ctrlName  = @_deriveControllerName(state, transition.toParams, transition)
-    ctrlClass = ctrlName and ctrlStore.getClass(ctrlName)
+    Router.notify('stateEnterStart', state, transition)
+    ctrlClass = Router.findController(state.controllerName, transition.params, transition)
 
     if ctrlClass
-      rootState      = state.getRoot()
-      rootCtrl       = rootState and @_getCtrl(rootState)
-      parentCtrl     = state.base and @_getCtrl(state.base)
-
-      ctrlClass      = beforeConstructor ctrlClass, ->
+      rootState      = state.root
+      rootCtrl       = rootState?.__controller
+      parentCtrl     = state.base?.__controller
+      ctrlClass      = _.beforeConstructor ctrlClass, ->
         @rootController   = rootCtrl or undefined
         @parentController = parentCtrl or undefined
 
-      ctrl           = new ctrlClass(transition.toParams, transition)
+      controller     = new ctrlClass(transition.params, transition)
+      controller.enter?(transition.toParams, transition)
 
-      @_storeCtrl(state, ctrl)
-      ctrl.enter?(transition.toParams, transition)
-
-    state.notify('enter', state, transition)
+    unless transition.aborted
+      state.__controller      = controller
+      state.__paramsIdentity  = state.identityParams(transition.route)
+      Router.notify('stateEnterSuccess', state, transition)
     return
 
   leaveState: (state, transition) ->
-    ctrl = @_getCtrl(state)
-    @_removeParams(state)
-    @_removeCtrl(state)
-
-    ctrl?.leave?()
-    state.notify('leave', state, transition)
+    Router.notify('stateLeaveStart', state, transition)
+    controller = state.__controller
+    controller?.leave?(transition.params, transition)
+    unless transition.aborted
+      delete state.__paramsIdentity
+      delete state.__controller
+      Router.notify('stateLeaveSuccess', state, transition)
     return
 
-  needToReloadState: (state, transition) ->
-    lastParams = @_getParams(state)
-    nextParams = state.extractBeginningParams(transition.route)
-    lastParams?.__version isnt nextParams?.__version
+  mustReloadState: (state, transition) ->
+    a = state.__paramsIdentity
+    b = state.identityParams(transition.route)
 
-  _storeParams: (state, params) ->
-    state._lastParams = params
-
-  _storeCtrl: (state, ctrl) ->
-    state._lastCtrl = ctrl
-
-  _removeParams: (state) ->
-    state._lastParams = undefined
-
-  _removeCtrl: (state) ->
-    state._lastCtrl = undefined
-
-  _getParams: (state) ->
-    state._lastParams
-
-  _getCtrl: (state) ->
-    state._lastCtrl
-
-  _deriveControllerName: (state, params, transition) ->
-    if state.hasComputedControllerName()
-      state.computeControllerName(params, transition)
+    false == if Router.options?.reloadOnQueryChange isnt true
+      _.isEqual(_.omit(a, 'query'), _.omit(b, 'query'))
     else
-      state.getControllerName()
+      _.isEqual(a, b)

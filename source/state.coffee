@@ -7,39 +7,27 @@ class State extends BaseClass
   @param 'name',       required: yes
   @param 'pattern',    required: yes
   @param 'base'
-  @param '404',        as: 'is404'
-  @param 'abstract',   as: 'isAbstract'
-  @param 'controller', as: '_controllerClassName'
-
-  {isFunction} = _
+  @param '404',        as: 'handles404'
+  @param 'abstract'
+  @param 'controller', as: 'controllerName'
 
   constructor: ->
     super
-    @is404      = !!@is404
-    @isAbstract = !!@isAbstract
+    @id         = _.generateId()
+    @handles404 = !!@handles404
+    @abstract   = !!@abstract
     @isRoot     = !@base
 
-    if @isAbstract and @is404
-      # TODO Error message
-      throw new Error 'State can be either abstract or 404 or none'
+    if @abstract and @handles404
+      throw new Error "[#{Router}] State can't handle 404 errors
+        and be abstract at the same time"
 
-    if not @is404 and @pattern.isRegexBased and not @ownRouteAssembler
-      # TODO Error message
-      throw new Error "[#{Router}] To assemble route from pattern which
-        is based on regex you must define custom assembler. #{this}"
+    if @pattern.regexBased and not @ownRouteAssembler
+      throw new Error "[#{Router}] To assemble #{@name} state's route from pattern which
+        is based on regex you must define custom assembler"
 
   toString: ->
-    "#{@constructor.name} '#{@name}'"
-
-  computeControllerClass: ->
-    Class = if isFunction(@_controllerClassName)
-      @_controllerClassName.apply(this, arguments)
-    else
-      @_controllerClassName
-
-    if isString(Class)
-      Class = Router.controllerStore.findClass(Class)
-    Class
+    "state #{@name}"
 
   @property 'root', ->
     state = this

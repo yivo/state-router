@@ -1,16 +1,15 @@
 class StateMatcher extends BaseClass
 
   match: (route) ->
-    store = Router.loadStateStore()
+    states = Router.states
 
-    match = store.findOne (state) ->
-      !state.isAbstract and !state.is404 and state.pattern.test(route)
+    match = states.findOne (state) ->
+      !state.abstract and !state.handles404 and state.pattern.test(route)
 
-    match ||= store.findOne (state) ->
-      state.is404
+    match ||= states.findOne (state) ->
+      state.handles404
 
     unless match
-      # TODO Error message
-      throw new Error("None of states matched route '#{route}' and no 404 state was found")
+      throw new Error "[#{Router}] None of states matched route '#{route}' and no 404 state was found"
 
     match

@@ -10,11 +10,11 @@ class Pattern extends BaseClass
     super
 
     if baseSource = @base?.source
-      @source = baseSource + if @source then '/' + @source else ''
+      @source = baseSource + if @source then ('/' + @source) else ''
 
     @type             = if @ownPath? then 'path' else 'regex'
-    @isRegexBased     = @type is 'regex'
-    @isPathBased      = @type is 'path'
+    @regexBased       = @type is 'regex'
+    @pathBased        = @type is 'path'
     compiler          = Router.patternCompiler
     @reRoute          = compiler.compile(@source, starts: yes, ends: yes)
     @reRouteIdentity  = compiler.compile(@source, starts: yes, ends: no)
