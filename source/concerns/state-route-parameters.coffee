@@ -1,11 +1,9 @@
-StateRouteParameters = do ->
-
-  {extend} = _
+StateRouteParameters =
 
   extractParams: (route) ->
     helper = Router.paramHelper
     match  = @pattern.match(route)
-    params = extend({}, @defaults)
+    params = _.extend({}, @defaults)
 
     for own param, value of match when not helper.refersToRegexMatch(param)
       if value?
@@ -19,7 +17,7 @@ StateRouteParameters = do ->
   identityParams: (route) ->
     helper = Router.paramHelper
     match  = @pattern.identity(route)
-    params = extend({}, @defaults)
+    params = _.extend({}, @defaults)
     params.query = @extractQueryString(route)
 
     for own param, value of match

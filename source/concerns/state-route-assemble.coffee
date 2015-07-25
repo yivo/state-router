@@ -1,6 +1,4 @@
-StateRouteAssemble = do ->
-
-  {extend, bind} = _
+StateRouteAssemble =
 
   included: (Class) ->
     Class.param 'assembler', as: 'ownRouteAssembler'
@@ -10,7 +8,8 @@ StateRouteAssemble = do ->
     value = params?[param] ? @defaults[param]
 
     if not value?
-      throw "#{param} is required" if not optional
+      unless optional
+        throw "[#{Router}] Parameter '#{param}' is required to assemble #{@name} state's route"
       return ''
 
     paramHelper = Router.paramHelper
@@ -32,10 +31,10 @@ StateRouteAssemble = do ->
 
   assembleOwnRoute: (params) ->
     if assembler = @ownRouteAssembler
-      own = assembler.call(this, extend({}, @ownDefaults, params), this)
+      own = assembler.call(this, _.extend({}, @ownDefaults, params), this)
     else
       path = @pattern.ownPath
-      own  = Router.pathDecorator.replaceParams(path, bind(@paramAssembler, this, params))
+      own  = Router.pathDecorator.replaceParams(path, _.bind(@paramAssembler, this, params))
     own
 
 StateRouteAssemble.route = StateRouteAssemble.assembleRoute

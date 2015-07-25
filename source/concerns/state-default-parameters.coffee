@@ -1,15 +1,13 @@
-StateDefaultParameters = do ->
-
-  {isFunction, isObject} = _
+StateDefaultParameters =
 
   included: (Class) ->
     Class.param 'defaults', as: '_ownDefaults'
 
     Class.property 'ownDefaults', ->
-      if isFunction(@_ownDefaults)
+      if _.isFunction(@_ownDefaults)
         @_ownDefaults = @_ownDefaults()
 
-      unless isObject(@_ownDefaults)
+      unless _.isObject(@_ownDefaults)
         @_ownDefaults = {}
 
       @_ownDefaults

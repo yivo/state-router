@@ -1,7 +1,5 @@
 StateStoreFrameworkFeatures = do ->
 
-  {removeAt, insertAt} = _
-
   Concern = {}
 
   for key, value of {Before: 0, After: 1}
@@ -13,10 +11,11 @@ StateStoreFrameworkFeatures = do ->
         j         = @indexOf(_newState)
 
         if i < 0
-          throw new Error "Can't insert #{type} state because it does not present in store"
+          throw new Error "[#{Router}] Can't insert #{_newState} #{type} #{_state}
+            because #{_state} does not exist in store"
 
-        removeAt(this, j) if j > -1
-        insertAt(this, i + offset, _newState)
+        _.removeAt(this, j) if j > -1
+        _.insertAt(this, i + offset, _newState)
         this
 
   Concern
