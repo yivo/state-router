@@ -1,0 +1,30 @@
+{
+  "name": "state-router",
+  "version": "1.0.0",
+  "homepage": "https://github.com/yivo/state-router",
+  "authors": [
+    "Yaroslav Konoplov <yaroslav@inbox.com>"
+  ],
+  "main": "build/state-router.js",
+  "license": "MIT",
+  "ignore": [
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests",
+    "spec",
+    "coffeespec",
+    "gulpfile.*"
+  ],
+  "dependencies": {
+    "coffee-concerns": "yivo/coffee-concerns",
+    "construct-with": "yivo/construct-with",
+    "ize": "yivo/ize",
+    "jquery": "^2.1.4",
+    "lodash": "^3.10.0",
+    "property-accessors": "yivo/property-accessors",
+    "publisher-subscriber": "git@github.com:yivo/publisher-subscriber.git",
+    "xregexp": "^2.0.0",
+    "yess": "yivo/yess"
+  }
+}
