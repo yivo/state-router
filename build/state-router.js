@@ -6,15 +6,15 @@
 
   (function(root, factory) {
     if (typeof define === 'function' && define.amd) {
-      define(['lodash', 'jquery', 'XRegExp', 'strict-parameters', 'pub-sub', 'property-accessors', 'yess', 'ize', 'coffee-concerns'], function(_, $, XRegExpAPI, StrictParameters, PublisherSubscriber, PropertyAccessors) {
-        return root.StateRouter = factory(root, _, $, XRegExpAPI, StrictParameters, PublisherSubscriber, PropertyAccessors);
+      define(['lodash', 'jquery', 'XRegExp', 'construct-with', 'publisher-subscriber', 'property-accessors', 'yess', 'ize', 'coffee-concerns'], function(_, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors) {
+        return root.StateRouter = factory(root, _, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors);
       });
     } else if (typeof module === 'object' && typeof module.exports === 'object') {
-      module.exports = factory(root, require('lodash'), require('jquery'), require('XRegExp'), require('strict-parameters'), require('pub-sub'), require('property-accessors'), require('yess'), require('ize'), require('coffee-concerns'));
+      module.exports = factory(root, require('lodash'), require('jquery'), require('XRegExp'), require('construct-with'), require('publisher-subscriber'), require('property-accessors'), require('yess'), require('ize'), require('coffee-concerns'));
     } else {
-      root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.StrictParameters, root.PublisherSubscriber, root.PropertyAccessors);
+      root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.ConstructWith, root.PublisherSubscriber, root.PropertyAccessors);
     }
-  })(this, function(__root__, _, $, XRegExpAPI, StrictParameters, PublisherSubscriber, PropertyAccessors) {
+  })(this, function(__root__, _, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors) {
     var BaseClass, Dispatcher, History, LinksInterceptor, ParamHelper, PathDecorator, Pattern, PatternCompiler, Router, State, StateBuilder, StateDefaultParameters, StateMatcher, StateRouteAssemble, StateRouteParameters, StateStore, StateStoreFrameworkFeatures, Transition, XRegExp;
     XRegExp = XRegExpAPI.XRegExp || XRegExpAPI;
     Router = {};
@@ -243,7 +243,7 @@
       return Class;
     };
     BaseClass = (function() {
-      BaseClass.include(StrictParameters);
+      BaseClass.include(ConstructWith);
 
       function BaseClass(options) {
         this.constructWith(options);

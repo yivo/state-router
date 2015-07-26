@@ -1,13 +1,13 @@
 ((root, factory) ->
   if typeof define is 'function' and define.amd
-    define ['lodash', 'jquery', 'XRegExp', 'strict-parameters', 'pub-sub', 'property-accessors', 'yess', 'ize', 'coffee-concerns'], (_, $, XRegExpAPI, StrictParameters, PublisherSubscriber, PropertyAccessors) ->
-      root.StateRouter = factory(root, _, $, XRegExpAPI, StrictParameters, PublisherSubscriber, PropertyAccessors)
+    define ['lodash', 'jquery', 'XRegExp', 'construct-with', 'publisher-subscriber', 'property-accessors', 'yess', 'ize', 'coffee-concerns'], (_, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors) ->
+      root.StateRouter = factory(root, _, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors)
   else if typeof module is 'object' && typeof module.exports is 'object'
-    module.exports = factory(root, require('lodash'), require('jquery'), require('XRegExp'), require('strict-parameters'), require('pub-sub'), require('property-accessors'), require('yess'), require('ize'), require('coffee-concerns'))
+    module.exports = factory(root, require('lodash'), require('jquery'), require('XRegExp'), require('construct-with'), require('publisher-subscriber'), require('property-accessors'), require('yess'), require('ize'), require('coffee-concerns'))
   else
-    root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.StrictParameters, root.PublisherSubscriber, root.PropertyAccessors)
+    root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.ConstructWith, root.PublisherSubscriber, root.PropertyAccessors)
   return
-)(this, (__root__, _, $, XRegExpAPI, StrictParameters, PublisherSubscriber, PropertyAccessors) ->
+)(this, (__root__, _, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors) ->
   XRegExp = XRegExpAPI.XRegExp or XRegExpAPI
   
   Router = {}
@@ -197,7 +197,7 @@
     Class
   class BaseClass
   
-    @include StrictParameters
+    @include ConstructWith
   
     constructor: (options) ->
       @constructWith(options)

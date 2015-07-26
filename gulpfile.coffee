@@ -15,15 +15,15 @@ gulp.task 'default', ['build', 'watch', 'server'], ->
 gulp.task 'build', ->
   global = 'StateRouter'
   dependencies = [
-    {require: 'lodash', global: '_'}
-    {require: 'jquery', global: '$'}
-    {require: 'XRegExp', global: 'XRegExp', argument: 'XRegExpAPI'}
+    {require: 'lodash',             global: '_'}
+    {require: 'jquery',             global: '$'}
+    {require: 'XRegExp',            global: 'XRegExp', argument: 'XRegExpAPI'}
     {require: 'yess'}
     {require: 'ize'}
     {require: 'coffee-concerns'}
-    {require: 'strict-parameters', global: 'StrictParameters'}
-    {require: 'pub-sub', global: 'PublisherSubscriber'}
-    {require: 'property-accessors', global: 'PropertyAccessors'}
+    {require: 'construct-with',       global: 'ConstructWith'}
+    {require: 'publisher-subscriber', global: 'PublisherSubscriber'}
+    {require: 'property-accessors',   global: 'PropertyAccessors'}
   ]
 
   gulp.src('source/_manifest.coffee')
@@ -34,12 +34,6 @@ gulp.task 'build', ->
   .pipe gulp.dest('build')
   .pipe coffee()
   .pipe concat('state-router.js')
-  .pipe gulp.dest('build')
-
-gulp.task 'build-min', ->
-  gulp.src('build/state-router.js')
-  .pipe uglify()
-  .pipe rename('state-router.min.js')
   .pipe gulp.dest('build')
 
 gulp.task 'watch', ->

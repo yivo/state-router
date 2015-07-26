@@ -1,6 +1,6 @@
 class BaseClass
 
-  @include StrictParameters
+  @include ConstructWith
 
   constructor: (options) ->
     @constructWith(options)

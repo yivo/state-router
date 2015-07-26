@@ -15,8 +15,9 @@ global.window.Node::contains = (node) ->
 global.$                   = require('jquery')
 global._                   = require('lodash')
 global.XRegExp             = require('xregexp').XRegExp
+require('ize')
 require('yess')
 require('coffee-concerns')
-global.StrictParameters    = require('strict-parameters')
-global.PublisherSubscriber = require('pub-sub')
+global.ConstructWith       = require('construct-with')
+global.PublisherSubscriber = require('publisher-subscriber')
 global.StateRouter         = require('../../build/state-router.js')
