@@ -41,7 +41,7 @@ state 'app',
     controller: 'Index'
     
   state 'profile',
-    pattern: 'users/:id'
+    path: 'users/:id'
     controller: 'UserProfile'
 ```
 This will create routes:
