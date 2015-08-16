@@ -15,7 +15,7 @@
       root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.ConstructWith, root.PublisherSubscriber, root.PropertyAccessors);
     }
   })(this, function(__root__, _, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors) {
-    var BaseClass, Dispatcher, History, LinksInterceptor, ParamHelper, PathDecorator, Pattern, PatternCompiler, Router, State, StateBuilder, StateDefaultParameters, StateMatcher, StateRouteAssemble, StateRouteParameters, StateStore, StateStoreFrameworkFeatures, Transition, XRegExp;
+    var BaseClass, Dispatcher, History, LinksInterceptor, ParamHelper, PathDecorator, Pattern, PatternCompiler, Router, State, StateBuilder, StateDefaultParameters, StateMatcher, StateRouteAssemble, StateRouteParameters, StateStore, StateStoreFrameworkFeatures, Transition, XRegExp, p;
     XRegExp = XRegExpAPI.XRegExp || XRegExpAPI;
     Router = {};
     (function() {
@@ -198,10 +198,13 @@
     Router.stop = function() {
       return Router.notify('stop');
     };
+    p = function(params) {
+      return _.extend({}, Router.currentParams, params);
+    };
     Router.url = function(state, params) {
       var c;
       c = Router.history.pushStateBased ? '/' : '#';
-      return c + Router.states.fetch(state).route(params);
+      return c + Router.states.fetch(state).route(p(params));
     };
     Router.go = function(state, params) {
       return Router.navigate(Router.url(state, params), true);
@@ -215,7 +218,7 @@
       fromParams = Router.currentParams;
       fromRoute = Router.currentRoute;
       toState = Router.states.fetch(state);
-      toParams = params || {};
+      toParams = p(params);
       toRoute = Router.history.route;
       transition = new Transition({
         fromState: fromState,

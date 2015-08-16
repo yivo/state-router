@@ -162,9 +162,12 @@
   Router.stop = ->
     Router.notify 'stop'
   
+  p = (params) ->
+    _.extend {}, Router.currentParams, params
+  
   Router.url = (state, params) ->
     c = if Router.history.pushStateBased then '/' else '#'
-    c + Router.states.fetch(state).route(params)
+    c + Router.states.fetch(state).route(p(params))
   
   Router.go = (state, params) ->
     Router.navigate(Router.url(state, params), true)
@@ -177,7 +180,7 @@
     fromParams = Router.currentParams
     fromRoute  = Router.currentRoute
     toState    = Router.states.fetch(state)
-    toParams   = params || {}
+    toParams   = p(params)
     toRoute    = Router.history.route
   
     transition = new Transition({fromState, fromParams, fromRoute, toState, toParams, toRoute})
