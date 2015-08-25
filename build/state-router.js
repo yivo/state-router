@@ -218,7 +218,7 @@
       fromParams = Router.currentParams;
       fromRoute = Router.currentRoute;
       toState = Router.states.fetch(state);
-      toParams = params;
+      toParams = params || {};
       toRoute = Router.history.route;
       transition = new Transition({
         fromState: fromState,
@@ -672,65 +672,73 @@
       }
 
       Dispatcher.prototype.dispatch = function(transition) {
-        var currentState, currentStateChain, enterStates, ignoreStates, k, l, leaveStates, len, len1, nextState, nextStateChain, ref, state;
-        if ((ref = this.dispatcherTransition) != null) {
-          ref.abort();
-        }
-        this.dispatcherTransition = transition;
-        Router.notify('transitionStart', transition);
-        if (transition.prevented) {
-          this.dispatcherTransition = null;
-          Router.notify('transitionPrevent', transition);
-          return;
-        } else if (transition.aborted) {
-          this.dispatcherTransition = null;
-          Router.notify('transitionAbort', transition);
-          return;
-        }
-        currentState = Router.currentState;
-        currentStateChain = (currentState != null ? currentState.chain : void 0) || [];
-        nextState = transition.state;
-        nextStateChain = (nextState != null ? nextState.chain : void 0) || [];
-        enterStates = [];
-        leaveStates = [];
-        ignoreStates = [];
-        for (k = 0, len = currentStateChain.length; k < len; k++) {
-          state = currentStateChain[k];
-          if (indexOf.call(nextStateChain, state) >= 0) {
-            if (this.mustReloadState(state, transition)) {
-              leaveStates.unshift(state);
-              enterStates.push(state);
-            } else {
-              ignoreStates.push(state);
+        var work;
+        work = (function(_this) {
+          return function() {
+            var currentState, currentStateChain, enterStates, ignoreStates, k, l, leaveStates, len, len1, nextState, nextStateChain, state;
+            _this.dispatcherTransition = transition;
+            Router.notify('transitionStart', transition);
+            if (transition.prevented) {
+              _this.dispatcherTransition = null;
+              Router.notify('transitionPrevent', transition);
+              return;
+            } else if (transition.aborted) {
+              _this.dispatcherTransition = null;
+              Router.notify('transitionAbort', transition);
+              return;
             }
-          } else {
-            leaveStates.unshift(state);
-          }
+            currentState = Router.currentState;
+            currentStateChain = (currentState != null ? currentState.chain : void 0) || [];
+            nextState = transition.state;
+            nextStateChain = (nextState != null ? nextState.chain : void 0) || [];
+            enterStates = [];
+            leaveStates = [];
+            ignoreStates = [];
+            for (k = 0, len = currentStateChain.length; k < len; k++) {
+              state = currentStateChain[k];
+              if (indexOf.call(nextStateChain, state) >= 0) {
+                if (_this.mustReloadState(state, transition)) {
+                  leaveStates.unshift(state);
+                  enterStates.push(state);
+                } else {
+                  ignoreStates.push(state);
+                }
+              } else {
+                leaveStates.unshift(state);
+              }
+            }
+            for (l = 0, len1 = nextStateChain.length; l < len1; l++) {
+              state = nextStateChain[l];
+              if ((indexOf.call(enterStates, state) < 0) && (indexOf.call(ignoreStates, state) < 0)) {
+                enterStates.push(state);
+              }
+            }
+            while (state = leaveStates.shift()) {
+              _this.leaveState(state, transition);
+              if (transition.aborted) {
+                _this.dispatcherTransition = null;
+                Router.notify('transitionAbort', transition);
+                return;
+              }
+            }
+            while (state = enterStates.shift()) {
+              _this.enterState(state, transition);
+              if (transition.aborted) {
+                _this.dispatcherTransition = null;
+                Router.notify('transitionAbort', transition);
+                return;
+              }
+            }
+            _this.dispatcherTransition = null;
+            return Router.notify('transitionSuccess', transition);
+          };
+        })(this);
+        if (this.dispatcherTransition) {
+          this.dispatcherTransition.abort();
+          _.delay(work);
+        } else {
+          work();
         }
-        for (l = 0, len1 = nextStateChain.length; l < len1; l++) {
-          state = nextStateChain[l];
-          if ((indexOf.call(enterStates, state) < 0) && (indexOf.call(ignoreStates, state) < 0)) {
-            enterStates.push(state);
-          }
-        }
-        while (state = leaveStates.shift()) {
-          this.leaveState(state, transition);
-          if (transition.aborted) {
-            this.dispatcherTransition = null;
-            Router.notify('transitionAbort', transition);
-            return;
-          }
-        }
-        while (state = enterStates.shift()) {
-          this.enterState(state, transition);
-          if (transition.aborted) {
-            this.dispatcherTransition = null;
-            Router.notify('transitionAbort', transition);
-            return;
-          }
-        }
-        this.dispatcherTransition = null;
-        Router.notify('transitionSuccess', transition);
       };
 
       Dispatcher.prototype.enterState = function(state, transition) {
@@ -1177,9 +1185,6 @@
     Router.on('transitionSuccess', function(transition) {
       return console.debug("[" + Router + "] Succeed " + transition);
     });
-    Router.on('stateEnterStart', function(state) {
-      return console.debug("[" + Router + "] " + (_.repeat('  ', state.depth)) + "Entering " + state + "...");
-    });
     Router.on('stateEnterAbort', function(state) {
       return console.debug("[" + Router + "] " + (_.repeat('  ', state.depth + 1)) + "Aborted " + state);
     });
@@ -1190,8 +1195,8 @@
       Router.currentState = state;
       return Router.notify('stateChange', state);
     });
-    Router.on('stateLeaveStart', function(state) {
-      return console.debug("[" + Router + "] " + (_.repeat('  ', state.depth)) + "Leaving " + state + "...");
+    Router.on('stateEnterStart', function(state) {
+      return console.debug("[" + Router + "] " + (_.repeat('  ', state.depth)) + "Entering " + state + "...");
     });
     Router.on('stateLeaveAbort', function(state) {
       return console.debug("[" + Router + "] " + (_.repeat('  ', state.depth + 1)) + "Aborted " + state);
@@ -1201,6 +1206,9 @@
     });
     Router.on('stateLeaveSuccess', function(state) {
       return Router.currentState = state.base;
+    });
+    Router.on('stateLeaveStart', function(state) {
+      return console.debug("[" + Router + "] " + (_.repeat('  ', state.depth)) + "Leaving " + state + "...");
     });
     _.extend(Router, {
       State: State,

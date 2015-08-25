@@ -29,7 +29,7 @@ Router.transition = (state, params) ->
   fromParams = Router.currentParams
   fromRoute  = Router.currentRoute
   toState    = Router.states.fetch(state)
-  toParams   = params
+  toParams   = params || {}
   toRoute    = Router.history.route
 
   transition = new Transition({fromState, fromParams, fromRoute, toState, toParams, toRoute})

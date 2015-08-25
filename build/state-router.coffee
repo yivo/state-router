@@ -180,7 +180,7 @@
     fromParams = Router.currentParams
     fromRoute  = Router.currentRoute
     toState    = Router.states.fetch(state)
-    toParams   = params
+    toParams   = params || {}
     toRoute    = Router.history.route
   
     transition = new Transition({fromState, fromParams, fromRoute, toState, toParams, toRoute})
@@ -481,64 +481,70 @@
   class Dispatcher extends BaseClass
   
     dispatch: (transition) ->
-      @dispatcherTransition?.abort()
+      work = =>
+        @dispatcherTransition = transition
   
-      @dispatcherTransition = transition
-      
-      # You can prevent from transitioning in this hook, for example.
-      Router.notify('transitionStart', transition)
+        # You can prevent from transitioning in this hook, for example.
+        Router.notify('transitionStart', transition)
   
-      # Do absolutely nothing if transition was prevented or aborted.
-      # You can retry transition by doing `transition.retry()`.
-      if transition.prevented
-        @dispatcherTransition = null
-        Router.notify('transitionPrevent', transition)
-        return
+        # Do absolutely nothing if transition was prevented or aborted.
+        # You can retry transition by doing `transition.retry()`.
+        if transition.prevented
+          @dispatcherTransition = null
+          Router.notify('transitionPrevent', transition)
+          return
   
-      else if transition.aborted
-        @dispatcherTransition = null
-        Router.notify('transitionAbort', transition)
-        return
+        else if transition.aborted
+          @dispatcherTransition = null
+          Router.notify('transitionAbort', transition)
+          return
   
-      currentState        = Router.currentState
-      currentStateChain   = currentState?.chain or []
-      nextState           = transition.state
-      nextStateChain      = nextState?.chain or []
+        currentState        = Router.currentState
+        currentStateChain   = currentState?.chain or []
+        nextState           = transition.state
+        nextStateChain      = nextState?.chain or []
   
-      enterStates         = []
-      leaveStates         = []
-      ignoreStates        = []
+        enterStates         = []
+        leaveStates         = []
+        ignoreStates        = []
   
-      for state in currentStateChain
-        if state in nextStateChain
-          if @mustReloadState(state, transition)
-            leaveStates.unshift(state)
-            enterStates.push(state)
+        for state in currentStateChain
+          if state in nextStateChain
+            if @mustReloadState(state, transition)
+              leaveStates.unshift(state)
+              enterStates.push(state)
+            else
+              ignoreStates.push(state)
           else
-            ignoreStates.push(state)
-        else
-          leaveStates.unshift(state)
+            leaveStates.unshift(state)
   
-      for state in nextStateChain
-        if (state not in enterStates) and (state not in ignoreStates)
-          enterStates.push(state)
+        for state in nextStateChain
+          if (state not in enterStates) and (state not in ignoreStates)
+            enterStates.push(state)
   
-      while state = leaveStates.shift()
-        @leaveState(state, transition)
-        if transition.aborted
-          @dispatcherTransition = null
-          Router.notify('transitionAbort', transition)
-          return
+        while state = leaveStates.shift()
+          @leaveState(state, transition)
+          if transition.aborted
+            @dispatcherTransition = null
+            Router.notify('transitionAbort', transition)
+            return
   
-      while state = enterStates.shift()
-        @enterState(state, transition)
-        if transition.aborted
-          @dispatcherTransition = null
-          Router.notify('transitionAbort', transition)
-          return
+        while state = enterStates.shift()
+          @enterState(state, transition)
+          if transition.aborted
+            @dispatcherTransition = null
+            Router.notify('transitionAbort', transition)
+            return
   
-      @dispatcherTransition = null
-      Router.notify('transitionSuccess', transition)
+        @dispatcherTransition = null
+        Router.notify('transitionSuccess', transition)
+  
+      if @dispatcherTransition
+        @dispatcherTransition.abort()
+        _.delay work
+      else
+        work()
+  
       return
   
     enterState: (state, transition) ->
@@ -922,9 +928,6 @@
   Router.on 'transitionSuccess', (transition) ->
     console.debug "[#{Router}] Succeed #{transition}"
   
-  Router.on 'stateEnterStart', (state) ->
-    console.debug "[#{Router}] #{_.repeat('  ', state.depth)}Entering #{state}..."
-  
   Router.on 'stateEnterAbort', (state) ->
     console.debug "[#{Router}] #{_.repeat('  ', state.depth + 1)}Aborted #{state}"
   
@@ -935,8 +938,8 @@
     Router.currentState = state
     Router.notify 'stateChange', state
   
-  Router.on 'stateLeaveStart', (state) ->
-    console.debug "[#{Router}] #{_.repeat('  ', state.depth)}Leaving #{state}..."
+  Router.on 'stateEnterStart', (state) ->
+    console.debug "[#{Router}] #{_.repeat('  ', state.depth)}Entering #{state}..."
   
   Router.on 'stateLeaveAbort', (state) ->
     console.debug "[#{Router}] #{_.repeat('  ', state.depth + 1)}Aborted #{state}"
@@ -946,6 +949,9 @@
   
   Router.on 'stateLeaveSuccess', (state) ->
     Router.currentState = state.base
+  
+  Router.on 'stateLeaveStart', (state) ->
+    console.debug "[#{Router}] #{_.repeat('  ', state.depth)}Leaving #{state}..."
   
   _.extend Router, {
     State

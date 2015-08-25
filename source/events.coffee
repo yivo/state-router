@@ -46,9 +46,6 @@ Router.on 'transitionSuccess', (transition) ->
 Router.on 'transitionSuccess', (transition) ->
   console.debug "[#{Router}] Succeed #{transition}"
 
-Router.on 'stateEnterStart', (state) ->
-  console.debug "[#{Router}] #{_.repeat('  ', state.depth)}Entering #{state}..."
-
 Router.on 'stateEnterAbort', (state) ->
   console.debug "[#{Router}] #{_.repeat('  ', state.depth + 1)}Aborted #{state}"
 
@@ -59,8 +56,8 @@ Router.on 'stateEnterSuccess', (state) ->
   Router.currentState = state
   Router.notify 'stateChange', state
 
-Router.on 'stateLeaveStart', (state) ->
-  console.debug "[#{Router}] #{_.repeat('  ', state.depth)}Leaving #{state}..."
+Router.on 'stateEnterStart', (state) ->
+  console.debug "[#{Router}] #{_.repeat('  ', state.depth)}Entering #{state}..."
 
 Router.on 'stateLeaveAbort', (state) ->
   console.debug "[#{Router}] #{_.repeat('  ', state.depth + 1)}Aborted #{state}"
@@ -70,3 +67,6 @@ Router.on 'stateLeaveSuccess', (state) ->
 
 Router.on 'stateLeaveSuccess', (state) ->
   Router.currentState = state.base
+
+Router.on 'stateLeaveStart', (state) ->
+  console.debug "[#{Router}] #{_.repeat('  ', state.depth)}Leaving #{state}..."
