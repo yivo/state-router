@@ -26,7 +26,7 @@ gulp.task 'build', ->
     {require: 'property-accessors',   global: 'PropertyAccessors'}
   ]
 
-  gulp.src('source/_manifest.coffee')
+  gulp.src('source/__manifest__.coffee')
   .pipe plumber()
   .pipe preprocess()
   .pipe iife {dependencies, global}

@@ -251,6 +251,12 @@
       while state = state.base
         chain.unshift(state)
       chain
+  
+    @property 'depth', ->
+      depth = 0
+      state = this
+      ++depth while state = state.base
+      depth
   class StateStore extends BaseClass
   
     @include StateStoreFrameworkFeatures
@@ -472,52 +478,27 @@
   
     escape: (path) ->
       path.replace(@reEscape, @escapeReplacement)
-  Router.once 'start', ->
-    Router.on 'transitionStart', (transition) ->
-      Router.dispatchedTransition = transition
-  
-    Router.on 'transitionAbort', (transition) ->
-      Router.dispatchedTransition = null
-      Router.abortedTransition    = transition
-  
-    Router.on 'transitionSuccess', (transition) ->
-      Router.succeedTransition    = transition
-      Router.currentParams        = transition.params
-      Router.currentRoute         = transition.route
-      Router.dispatchedTransition = null
-  
-    Router.on 'stateEnterSuccess', (state) ->
-      Router.currentState = state
-      Router.notify 'stateChange', state
-  
-    Router.on 'stateLeaveSuccess', (state) ->
-      Router.currentState = state.base
-  
-  Router.once 'debug', ->
-    Router.on 'transitionStart', (transition) ->
-      console.debug "[#{Router}] Started #{transition}"
-      console.debug "[#{Router}] Parameters", transition.params
-  
-    Router.on 'transitionSuccess', (transition) ->
-      console.debug "[#{Router}] Succeed #{transition}"
-  
-    Router.on 'stateEnterStart', (state) ->
-      console.debug "[#{Router}] Entering #{state}"
-  
-    Router.on 'stateLeaveStart', (state) ->
-      console.debug "[#{Router}] Leaving #{state}"
-  
   class Dispatcher extends BaseClass
   
     dispatch: (transition) ->
-      Router.dispatchedTransition?.abort()
+      @dispatcherTransition?.abort()
   
+      @dispatcherTransition = transition
+      
       # You can prevent from transitioning in this hook, for example.
       Router.notify('transitionStart', transition)
   
-      # Do absolutely nothing if transition was prevented.
+      # Do absolutely nothing if transition was prevented or aborted.
       # You can retry transition by doing `transition.retry()`.
-      return if transition.prevented
+      if transition.prevented
+        @dispatcherTransition = null
+        Router.notify('transitionPrevent', transition)
+        return
+  
+      else if transition.aborted
+        @dispatcherTransition = null
+        Router.notify('transitionAbort', transition)
+        return
   
       currentState        = Router.currentState
       currentStateChain   = currentState?.chain or []
@@ -544,17 +525,31 @@
   
       while state = leaveStates.shift()
         @leaveState(state, transition)
-        return if transition.aborted
+        if transition.aborted
+          @dispatcherTransition = null
+          Router.notify('transitionAbort', transition)
+          return
   
       while state = enterStates.shift()
         @enterState(state, transition)
-        return if transition.aborted
+        if transition.aborted
+          @dispatcherTransition = null
+          Router.notify('transitionAbort', transition)
+          return
   
+      @dispatcherTransition = null
       Router.notify('transitionSuccess', transition)
       return
   
     enterState: (state, transition) ->
       Router.notify('stateEnterStart', state, transition)
+  
+      # You have aborted transition in `stateEnterStart` hook?
+      if transition.aborted
+        # Notify outer world and return.
+        Router.notify('stateEnterAbort', state, transition)
+        return
+  
       ctrlClass = Router.findController(state.controllerName, transition.params, transition)
   
       if ctrlClass
@@ -562,26 +557,56 @@
         rootCtrl       = rootState?.__controller
         parentCtrl     = state.base?.__controller
         ctrlClass      = _.beforeConstructor ctrlClass, ->
-          @rootController   = rootCtrl or undefined
-          @parentController = parentCtrl or undefined
+          @rootController   = rootCtrl or undefined # guard for falsy values
+          @parentController = parentCtrl or undefined # guard for falsy values
   
         controller     = new ctrlClass(transition.params, transition)
         controller.enter?(transition.toParams, transition)
   
-      unless transition.aborted
-        state.__controller      = controller
-        state.__paramsIdentity  = state.identityParams(transition.route)
+      # You have aborted transition in controller?
+      if transition.aborted
+        # Controller has been created. We must do some cleanup.
+        controller?.leave?()
+  
+        # Notify outer world.
+        Router.notify('stateEnterAbort', state, transition)
+  
+      # Transition hasn't been aborted.
+      else
+        # Save controller into private property:
+        state.__controller = controller
+  
+        # Save parameters identity into private property:
+        state.__paramsIdentity = state.identityParams(transition.route)
+  
+        # Notify outer world.
         Router.notify('stateEnterSuccess', state, transition)
+  
       return
   
     leaveState: (state, transition) ->
+      # Notify outer world than state will be leaved.
       Router.notify('stateLeaveStart', state, transition)
+  
+      # You have aborted state leave in hook?
+      if transition.aborted
+        Router.notify('stateLeaveAbort', state, transition)
+        return
+  
       controller = state.__controller
       controller?.leave?(transition.params, transition)
-      unless transition.aborted
+  
+      # You have aborted transition in controller?
+      if transition.aborted
+        Router.notify('stateLeaveAbort', state, transition)
+        return
+  
+      # Transition hasn't been aborted.
+      else
         delete state.__paramsIdentity
         delete state.__controller
         Router.notify('stateLeaveSuccess', state, transition)
+  
       return
   
     mustReloadState: (state, transition) ->
@@ -610,13 +635,6 @@
   
     decode: (param, value) ->
       decodeURIComponent(value)
-  Router.on 'debug', ->
-    Router.on 'transitionAbort', (transition) ->
-      console.debug "[#{Router}] Aborted #{transition}"
-  
-    Router.on 'transitionPrevent', (transition) ->
-      console.debug "[#{Router}] Prevented #{transition}"
-  
   class Transition extends BaseClass
   
     @param 'fromState'
@@ -633,19 +651,23 @@
       @aborted   = false
   
     prevent: ->
-      Router.notify('transitionPrevent', this) unless @prevented
-      @prevented = true
+      if not @aborted and not @prevented
+        @prevented = true
+        @previouslyPrevented = true
       this
   
     abort: ->
-      Router.notify('transitionAbort', this) unless @aborted
-      @aborted = true
+      if not @aborted and not @prevented
+        @aborted = true
+        @previouslyAborted = true
       this
   
     dispatch: ->
       Router.dispatcher.dispatch(this)
   
     retry: ->
+      @prevented = false
+      @aborted   = false
       @dispatch()
   
     toString: ->
@@ -653,33 +675,11 @@
       s += if @fromState then " #{@fromState.name}" else ' <initial>'
       s += " -> #{@toState.name}"
       s
-  Router.once 'start', ->
-    Router.on 'routeChange', (route) ->
-      state = Router.stateMatcher.match(route)
-      Router.transition(state, state.params(route), route)
-  
   Router.on 'start', ->
-    Router.history.start()
+    _.delay -> Router.history.start()
   
   Router.on 'stop', ->
-    Router.history.stop()
-  
-  Router.once 'debug', ->
-    Router.once 'routeChange', (route) ->
-      console.debug "[#{Router}] Started with route '#{route}'"
-  
-      Router.on 'routeChange', (route) ->
-        console.debug "[#{Router}] Route changed '#{route}'"
-  
-    Router.on 'fragmentUpdate', (fragment, replace) ->
-      console.debug "[#{Router}] " + if replace
-        "Replaced hash in history with '#{fragment}'"
-      else "Set hash to history '#{fragment}'"
-  
-    Router.on 'pathUpdate', (path, replace) ->
-      console.debug "[#{Router}] " + if replace
-        "Replaced state in history with '#{path}'"
-      else "Pushed state to history '#{path}'"
+    _.delay -> Router.history.stop()
   
   class History extends BaseClass
   
@@ -874,6 +874,78 @@
   
       Router.navigate(route, true)
       return
+  console.debug = (->) unless _.isFunction(console.debug)
+  
+  Router.on 'routeChange', do ->
+    firstChange = true
+    (route) ->
+      if firstChange
+        console.debug "[#{Router}] Bootstrap with route '#{route}'"
+        firstChange = false
+      else
+        console.debug "[#{Router}] Route changed '#{route}'"
+  
+  Router.on 'routeChange', (route) ->
+    state = Router.stateMatcher.match(route)
+    Router.transition(state, state.params(route), route)
+  
+  Router.on 'fragmentUpdate', (fragment, replace) ->
+    console.debug "[#{Router}] " + if replace
+      "Replaced hash in history with '#{fragment}'"
+    else "Set hash to history '#{fragment}'"
+  
+  Router.on 'pathUpdate', (path, replace) ->
+    console.debug "[#{Router}] " + if replace
+      "Replaced path in history with '#{path}'"
+    else "Pushed path to history '#{path}'"
+  
+  Router.on 'transitionStart', (transition) ->
+    action = if transition.previouslyPrevented
+      'Retrying previously prevented'
+    else if transition.previouslyAborted
+      'Retrying previously aborted'
+    else
+      'Started'
+    console.debug "[#{Router}] #{action} #{transition}"
+    console.debug "[#{Router}] Parameters", transition.params
+  
+  Router.on 'transitionAbort', (transition) ->
+    console.debug "[#{Router}] Aborted #{transition}"
+  
+  Router.on 'transitionPrevent', (transition) ->
+    console.debug "[#{Router}] Prevented #{transition}"
+  
+  Router.on 'transitionSuccess', (transition) ->
+    Router.currentParams = transition.params
+    Router.currentRoute  = transition.route
+  
+  Router.on 'transitionSuccess', (transition) ->
+    console.debug "[#{Router}] Succeed #{transition}"
+  
+  Router.on 'stateEnterStart', (state) ->
+    console.debug "[#{Router}] #{_.repeat('  ', state.depth)}Entering #{state}..."
+  
+  Router.on 'stateEnterAbort', (state) ->
+    console.debug "[#{Router}] #{_.repeat('  ', state.depth + 1)}Aborted #{state}"
+  
+  Router.on 'stateEnterSuccess', (state) ->
+    console.debug "[#{Router}] #{_.repeat('  ', state.depth + 1)}Succeed #{state}"
+  
+  Router.on 'stateEnterSuccess', (state) ->
+    Router.currentState = state
+    Router.notify 'stateChange', state
+  
+  Router.on 'stateLeaveStart', (state) ->
+    console.debug "[#{Router}] #{_.repeat('  ', state.depth)}Leaving #{state}..."
+  
+  Router.on 'stateLeaveAbort', (state) ->
+    console.debug "[#{Router}] #{_.repeat('  ', state.depth + 1)}Aborted #{state}"
+  
+  Router.on 'stateLeaveSuccess', (state) ->
+    console.debug "[#{Router}] #{_.repeat('  ', state.depth + 1)}Succeed #{state}"
+  
+  Router.on 'stateLeaveSuccess', (state) ->
+    Router.currentState = state.base
   
   _.extend Router, {
     State

@@ -1,10 +1,3 @@
-Router.on 'debug', ->
-  Router.on 'transitionAbort', (transition) ->
-    console.debug "[#{Router}] Aborted #{transition}"
-
-  Router.on 'transitionPrevent', (transition) ->
-    console.debug "[#{Router}] Prevented #{transition}"
-
 class Transition extends BaseClass
 
   @param 'fromState'
@@ -21,19 +14,23 @@ class Transition extends BaseClass
     @aborted   = false
 
   prevent: ->
-    Router.notify('transitionPrevent', this) unless @prevented
-    @prevented = true
+    if not @aborted and not @prevented
+      @prevented = true
+      @previouslyPrevented = true
     this
 
   abort: ->
-    Router.notify('transitionAbort', this) unless @aborted
-    @aborted = true
+    if not @aborted and not @prevented
+      @aborted = true
+      @previouslyAborted = true
     this
 
   dispatch: ->
     Router.dispatcher.dispatch(this)
 
   retry: ->
+    @prevented = false
+    @aborted   = false
     @dispatch()
 
   toString: ->

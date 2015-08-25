@@ -40,6 +40,7 @@ do ->
 # @include transition.coffee
 # @include history.coffee
 # @include links-interceptor.coffee
+# @include events.coffee
 
 _.extend Router, {
   State

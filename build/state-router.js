@@ -326,6 +326,16 @@
         return chain;
       });
 
+      State.property('depth', function() {
+        var depth, state;
+        depth = 0;
+        state = this;
+        while (state = state.base) {
+          ++depth;
+        }
+        return depth;
+      });
+
       return State;
 
     })(BaseClass);
@@ -654,43 +664,6 @@
       return PathDecorator;
 
     })(BaseClass);
-    Router.once('start', function() {
-      Router.on('transitionStart', function(transition) {
-        return Router.dispatchedTransition = transition;
-      });
-      Router.on('transitionAbort', function(transition) {
-        Router.dispatchedTransition = null;
-        return Router.abortedTransition = transition;
-      });
-      Router.on('transitionSuccess', function(transition) {
-        Router.succeedTransition = transition;
-        Router.currentParams = transition.params;
-        Router.currentRoute = transition.route;
-        return Router.dispatchedTransition = null;
-      });
-      Router.on('stateEnterSuccess', function(state) {
-        Router.currentState = state;
-        return Router.notify('stateChange', state);
-      });
-      return Router.on('stateLeaveSuccess', function(state) {
-        return Router.currentState = state.base;
-      });
-    });
-    Router.once('debug', function() {
-      Router.on('transitionStart', function(transition) {
-        console.debug("[" + Router + "] Started " + transition);
-        return console.debug("[" + Router + "] Parameters", transition.params);
-      });
-      Router.on('transitionSuccess', function(transition) {
-        return console.debug("[" + Router + "] Succeed " + transition);
-      });
-      Router.on('stateEnterStart', function(state) {
-        return console.debug("[" + Router + "] Entering " + state);
-      });
-      return Router.on('stateLeaveStart', function(state) {
-        return console.debug("[" + Router + "] Leaving " + state);
-      });
-    });
     Dispatcher = (function(superClass) {
       extend1(Dispatcher, superClass);
 
@@ -700,11 +673,18 @@
 
       Dispatcher.prototype.dispatch = function(transition) {
         var currentState, currentStateChain, enterStates, ignoreStates, k, l, leaveStates, len, len1, nextState, nextStateChain, ref, state;
-        if ((ref = Router.dispatchedTransition) != null) {
+        if ((ref = this.dispatcherTransition) != null) {
           ref.abort();
         }
+        this.dispatcherTransition = transition;
         Router.notify('transitionStart', transition);
         if (transition.prevented) {
+          this.dispatcherTransition = null;
+          Router.notify('transitionPrevent', transition);
+          return;
+        } else if (transition.aborted) {
+          this.dispatcherTransition = null;
+          Router.notify('transitionAbort', transition);
           return;
         }
         currentState = Router.currentState;
@@ -736,21 +716,30 @@
         while (state = leaveStates.shift()) {
           this.leaveState(state, transition);
           if (transition.aborted) {
+            this.dispatcherTransition = null;
+            Router.notify('transitionAbort', transition);
             return;
           }
         }
         while (state = enterStates.shift()) {
           this.enterState(state, transition);
           if (transition.aborted) {
+            this.dispatcherTransition = null;
+            Router.notify('transitionAbort', transition);
             return;
           }
         }
+        this.dispatcherTransition = null;
         Router.notify('transitionSuccess', transition);
       };
 
       Dispatcher.prototype.enterState = function(state, transition) {
         var controller, ctrlClass, parentCtrl, ref, rootCtrl, rootState;
         Router.notify('stateEnterStart', state, transition);
+        if (transition.aborted) {
+          Router.notify('stateEnterAbort', state, transition);
+          return;
+        }
         ctrlClass = Router.findController(state.controllerName, transition.params, transition);
         if (ctrlClass) {
           rootState = state.root;
@@ -765,7 +754,14 @@
             controller.enter(transition.toParams, transition);
           }
         }
-        if (!transition.aborted) {
+        if (transition.aborted) {
+          if (controller != null) {
+            if (typeof controller.leave === "function") {
+              controller.leave();
+            }
+          }
+          Router.notify('stateEnterAbort', state, transition);
+        } else {
           state.__controller = controller;
           state.__paramsIdentity = state.identityParams(transition.route);
           Router.notify('stateEnterSuccess', state, transition);
@@ -775,13 +771,20 @@
       Dispatcher.prototype.leaveState = function(state, transition) {
         var controller;
         Router.notify('stateLeaveStart', state, transition);
+        if (transition.aborted) {
+          Router.notify('stateLeaveAbort', state, transition);
+          return;
+        }
         controller = state.__controller;
         if (controller != null) {
           if (typeof controller.leave === "function") {
             controller.leave(transition.params, transition);
           }
         }
-        if (!transition.aborted) {
+        if (transition.aborted) {
+          Router.notify('stateLeaveAbort', state, transition);
+          return;
+        } else {
           delete state.__paramsIdentity;
           delete state.__controller;
           Router.notify('stateLeaveSuccess', state, transition);
@@ -830,14 +833,6 @@
       return ParamHelper;
 
     })(BaseClass);
-    Router.on('debug', function() {
-      Router.on('transitionAbort', function(transition) {
-        return console.debug("[" + Router + "] Aborted " + transition);
-      });
-      return Router.on('transitionPrevent', function(transition) {
-        return console.debug("[" + Router + "] Prevented " + transition);
-      });
-    });
     Transition = (function(superClass) {
       extend1(Transition, superClass);
 
@@ -869,18 +864,18 @@
       }
 
       Transition.prototype.prevent = function() {
-        if (!this.prevented) {
-          Router.notify('transitionPrevent', this);
+        if (!this.aborted && !this.prevented) {
+          this.prevented = true;
+          this.previouslyPrevented = true;
         }
-        this.prevented = true;
         return this;
       };
 
       Transition.prototype.abort = function() {
-        if (!this.aborted) {
-          Router.notify('transitionAbort', this);
+        if (!this.aborted && !this.prevented) {
+          this.aborted = true;
+          this.previouslyAborted = true;
         }
-        this.aborted = true;
         return this;
       };
 
@@ -889,6 +884,8 @@
       };
 
       Transition.prototype.retry = function() {
+        this.prevented = false;
+        this.aborted = false;
         return this.dispatch();
       };
 
@@ -903,31 +900,14 @@
       return Transition;
 
     })(BaseClass);
-    Router.once('start', function() {
-      return Router.on('routeChange', function(route) {
-        var state;
-        state = Router.stateMatcher.match(route);
-        return Router.transition(state, state.params(route), route);
-      });
-    });
     Router.on('start', function() {
-      return Router.history.start();
+      return _.delay(function() {
+        return Router.history.start();
+      });
     });
     Router.on('stop', function() {
-      return Router.history.stop();
-    });
-    Router.once('debug', function() {
-      Router.once('routeChange', function(route) {
-        console.debug("[" + Router + "] Started with route '" + route + "'");
-        return Router.on('routeChange', function(route) {
-          return console.debug("[" + Router + "] Route changed '" + route + "'");
-        });
-      });
-      Router.on('fragmentUpdate', function(fragment, replace) {
-        return console.debug(("[" + Router + "] ") + (replace ? "Replaced hash in history with '" + fragment + "'" : "Set hash to history '" + fragment + "'"));
-      });
-      return Router.on('pathUpdate', function(path, replace) {
-        return console.debug(("[" + Router + "] ") + (replace ? "Replaced state in history with '" + path + "'" : "Pushed state to history '" + path + "'"));
+      return _.delay(function() {
+        return Router.history.stop();
       });
     });
     History = (function(superClass) {
@@ -1152,6 +1132,76 @@
       return LinksInterceptor;
 
     })(BaseClass);
+    if (!_.isFunction(console.debug)) {
+      console.debug = (function() {});
+    }
+    Router.on('routeChange', (function() {
+      var firstChange;
+      firstChange = true;
+      return function(route) {
+        if (firstChange) {
+          console.debug("[" + Router + "] Bootstrap with route '" + route + "'");
+          return firstChange = false;
+        } else {
+          return console.debug("[" + Router + "] Route changed '" + route + "'");
+        }
+      };
+    })());
+    Router.on('routeChange', function(route) {
+      var state;
+      state = Router.stateMatcher.match(route);
+      return Router.transition(state, state.params(route), route);
+    });
+    Router.on('fragmentUpdate', function(fragment, replace) {
+      return console.debug(("[" + Router + "] ") + (replace ? "Replaced hash in history with '" + fragment + "'" : "Set hash to history '" + fragment + "'"));
+    });
+    Router.on('pathUpdate', function(path, replace) {
+      return console.debug(("[" + Router + "] ") + (replace ? "Replaced path in history with '" + path + "'" : "Pushed path to history '" + path + "'"));
+    });
+    Router.on('transitionStart', function(transition) {
+      var action;
+      action = transition.previouslyPrevented ? 'Retrying previously prevented' : transition.previouslyAborted ? 'Retrying previously aborted' : 'Started';
+      console.debug("[" + Router + "] " + action + " " + transition);
+      return console.debug("[" + Router + "] Parameters", transition.params);
+    });
+    Router.on('transitionAbort', function(transition) {
+      return console.debug("[" + Router + "] Aborted " + transition);
+    });
+    Router.on('transitionPrevent', function(transition) {
+      return console.debug("[" + Router + "] Prevented " + transition);
+    });
+    Router.on('transitionSuccess', function(transition) {
+      Router.currentParams = transition.params;
+      return Router.currentRoute = transition.route;
+    });
+    Router.on('transitionSuccess', function(transition) {
+      return console.debug("[" + Router + "] Succeed " + transition);
+    });
+    Router.on('stateEnterStart', function(state) {
+      return console.debug("[" + Router + "] " + (_.repeat('  ', state.depth)) + "Entering " + state + "...");
+    });
+    Router.on('stateEnterAbort', function(state) {
+      return console.debug("[" + Router + "] " + (_.repeat('  ', state.depth + 1)) + "Aborted " + state);
+    });
+    Router.on('stateEnterSuccess', function(state) {
+      return console.debug("[" + Router + "] " + (_.repeat('  ', state.depth + 1)) + "Succeed " + state);
+    });
+    Router.on('stateEnterSuccess', function(state) {
+      Router.currentState = state;
+      return Router.notify('stateChange', state);
+    });
+    Router.on('stateLeaveStart', function(state) {
+      return console.debug("[" + Router + "] " + (_.repeat('  ', state.depth)) + "Leaving " + state + "...");
+    });
+    Router.on('stateLeaveAbort', function(state) {
+      return console.debug("[" + Router + "] " + (_.repeat('  ', state.depth + 1)) + "Aborted " + state);
+    });
+    Router.on('stateLeaveSuccess', function(state) {
+      return console.debug("[" + Router + "] " + (_.repeat('  ', state.depth + 1)) + "Succeed " + state);
+    });
+    Router.on('stateLeaveSuccess', function(state) {
+      return Router.currentState = state.base;
+    });
     _.extend(Router, {
       State: State,
       StateStore: StateStore,

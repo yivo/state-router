@@ -45,3 +45,9 @@ class State extends BaseClass
     while state = state.base
       chain.unshift(state)
     chain
+
+  @property 'depth', ->
+    depth = 0
+    state = this
+    ++depth while state = state.base
+    depth

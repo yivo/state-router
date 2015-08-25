@@ -1,30 +1,8 @@
-Router.once 'start', ->
-  Router.on 'routeChange', (route) ->
-    state = Router.stateMatcher.match(route)
-    Router.transition(state, state.params(route), route)
-
 Router.on 'start', ->
-  Router.history.start()
+  _.delay -> Router.history.start()
 
 Router.on 'stop', ->
-  Router.history.stop()
-
-Router.once 'debug', ->
-  Router.once 'routeChange', (route) ->
-    console.debug "[#{Router}] Started with route '#{route}'"
-
-    Router.on 'routeChange', (route) ->
-      console.debug "[#{Router}] Route changed '#{route}'"
-
-  Router.on 'fragmentUpdate', (fragment, replace) ->
-    console.debug "[#{Router}] " + if replace
-      "Replaced hash in history with '#{fragment}'"
-    else "Set hash to history '#{fragment}'"
-
-  Router.on 'pathUpdate', (path, replace) ->
-    console.debug "[#{Router}] " + if replace
-      "Replaced state in history with '#{path}'"
-    else "Pushed state to history '#{path}'"
+  _.delay -> Router.history.stop()
 
 class History extends BaseClass
 
