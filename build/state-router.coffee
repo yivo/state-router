@@ -192,11 +192,17 @@
     ns = _.result(Router, 'controllerLookupNamespace')
     ns["#{name}Controller"] or ns[name] or ns["#{name.classCase()}Controller"] or ns[name.classCase()]
   
-  Router.findController = (arg, rest...) ->
-    Class = if _.isFunction(arg) then arg(rest...)
-    else Router.controllerLookup(arg)
+  Router.findController = (arg) ->
+    if typeof arg is 'function'
+      length          = arguments.length
+      rest            = Array(Math.max(length - 1, 0))
+      index           = 0
+      rest[index - 1] = arguments[index] while ++index < length
+      Class           = arg(rest...)
+    else
+      Class           = Router.controllerLookup(arg)
   
-    Class = Router.controllerLookup(Class) if _.isString(Class)
+    Class = Router.controllerLookup(Class) if typeof Class is 'string'
     Class
   class BaseClass
   

@@ -1,6 +1,5 @@
 (function() {
   var hasProp = {}.hasOwnProperty,
-    slice = [].slice,
     extend1 = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
     indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
@@ -236,11 +235,20 @@
       ns = _.result(Router, 'controllerLookupNamespace');
       return ns[name + "Controller"] || ns[name] || ns[(name.classCase()) + "Controller"] || ns[name.classCase()];
     };
-    Router.findController = function() {
-      var Class, arg, rest;
-      arg = arguments[0], rest = 2 <= arguments.length ? slice.call(arguments, 1) : [];
-      Class = _.isFunction(arg) ? arg.apply(null, rest) : Router.controllerLookup(arg);
-      if (_.isString(Class)) {
+    Router.findController = function(arg) {
+      var Class, index, length, rest;
+      if (typeof arg === 'function') {
+        length = arguments.length;
+        rest = Array(Math.max(length - 1, 0));
+        index = 0;
+        while (++index < length) {
+          rest[index - 1] = arguments[index];
+        }
+        Class = arg.apply(null, rest);
+      } else {
+        Class = Router.controllerLookup(arg);
+      }
+      if (typeof Class === 'string') {
         Class = Router.controllerLookup(Class);
       }
       return Class;
