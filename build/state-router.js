@@ -1109,7 +1109,7 @@
 
       function LinksInterceptor() {
         LinksInterceptor.__super__.constructor.apply(this, arguments);
-        _.bindMethod(this, 'intercept');
+        _.bindMethod(this, 'intercept', 'onKeyDown', 'onKeyUp');
         this.started = false;
       }
 
@@ -1117,7 +1117,10 @@
         if (this.started) {
           throw new Error("[" + Router + "] Links interceptor has already been started!");
         }
-        Router.$(document).on('click', 'a', this.intercept);
+        this.$document = Router.$(document);
+        this.$window = Router.$(window);
+        this.$document.on('click.LinksInterceptor', 'a', this.intercept);
+        this.$window.on('keydown.LinksInterceptor', this.onKeyDown).on('keyup.LinksInterceptor', this.onKeyUp);
         this.started = true;
         return this;
       };
@@ -1126,14 +1129,23 @@
         if (!this.started) {
           throw new Error("[" + Router + "] Links interceptor hasn't been started!");
         }
-        Router.$(document).off('click', 'a', this.intercept);
+        this.$document.off('.LinksInterceptor');
+        this.$window.off('.LinksInterceptor');
         this.started = false;
         return this;
       };
 
+      LinksInterceptor.prototype.onKeyDown = function() {
+        return this.keyPressed = true;
+      };
+
+      LinksInterceptor.prototype.onKeyUp = function() {
+        return this.keyPressed = false;
+      };
+
       LinksInterceptor.prototype.intercept = function(e) {
         var $link, href, intercept, ref, route;
-        if (e.which !== 1) {
+        if (e.which !== 1 || this.keyPressed) {
           return;
         }
         $link = Router.$(e.currentTarget);

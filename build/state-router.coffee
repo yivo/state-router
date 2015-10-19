@@ -121,7 +121,7 @@
       if (query = params?.query)?
         unless _.isString(query)
           query = decodeURIComponent(Router.$.param(query))
-          
+  
         route = route + (if query[0] is '?' then '' else '?') + query
       route
   
@@ -845,14 +845,20 @@
   
     constructor: ->
       super
-      _.bindMethod(this, 'intercept')
+      _.bindMethod(this, 'intercept', 'onKeyDown', 'onKeyUp')
       @started = false
   
     start: ->
       if @started
         throw new Error "[#{Router}] Links interceptor has already been started!"
   
-      Router.$(document).on('click', 'a', @intercept)
+      @$document  = Router.$(document)
+      @$window    = Router.$(window)
+  
+      @$document.on('click.LinksInterceptor', 'a', @intercept)
+      @$window
+        .on 'keydown.LinksInterceptor', @onKeyDown
+        .on 'keyup.LinksInterceptor',   @onKeyUp
       @started = true
       this
   
@@ -860,13 +866,21 @@
       unless @started
         throw new Error "[#{Router}] Links interceptor hasn't been started!"
   
-      Router.$(document).off('click', 'a', @intercept)
+      @$document.off('.LinksInterceptor')
+      @$window.off('.LinksInterceptor')
       @started = false
       this
   
+    onKeyDown: ->
+      @keyPressed = true
+  
+    onKeyUp: ->
+      @keyPressed = false
+  
     intercept: (e) ->
       # Only intercept left-clicks
-      return if e.which isnt 1
+      # Allow action "Open in new tab" (CTRL + Left click or Command + Left click)
+      return if e.which isnt 1 or @keyPressed
   
       $link = Router.$(e.currentTarget)
   
