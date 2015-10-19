@@ -135,11 +135,18 @@
         return (token || '') + (splat ? paramHelper.encodeSplat(param, value) : paramHelper.encode(param, value));
       },
       assembleRoute: function(params) {
-        var own, query, ref, route;
-        route = ((ref = this.base) != null ? ref.assembleRoute(params) : void 0) || '';
-        own = this.assembleOwnRoute(params);
-        route = route ? route + (own ? '/' : '') + own : own;
-        if (query = (params != null ? params.query : void 0) != null) {
+        var own, query, route, state;
+        state = this;
+        route = '';
+        while (state) {
+          own = state.assembleOwnRoute(params);
+          route = route ? own + (own ? '/' : '') + route : own;
+          state = state.base;
+        }
+        if ((query = params != null ? params.query : void 0) != null) {
+          if (!_.isString(query)) {
+            query = decodeURIComponent(Router.$.param(query));
+          }
           route = route + (query[0] === '?' ? '' : '?') + query;
         }
         return route;

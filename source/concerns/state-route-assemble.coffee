@@ -19,13 +19,19 @@ StateRouteAssemble =
       paramHelper.encode(param, value)
 
   assembleRoute: (params) ->
-    route = @base?.assembleRoute(params) or ''
-    own   = @assembleOwnRoute(params)
-    route = if route
-      route + (if own then '/' else '') + own
-    else own
+    state = this
+    route = ''
+    while state
+      own   = state.assembleOwnRoute(params)
+      route = if route
+        own + (if own then '/' else '') + route
+      else own
+      state = state.base
 
-    if query = params?.query?
+    if (query = params?.query)?
+      unless _.isString(query)
+        query = decodeURIComponent(Router.$.param(query))
+
       route = route + (if query[0] is '?' then '' else '?') + query
     route
 
