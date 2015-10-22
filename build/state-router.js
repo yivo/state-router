@@ -94,12 +94,18 @@
         }
         return params;
       },
+      extractChainParams: function(route) {
+        return this.identityParams(route);
+      },
       identityParams: function(route) {
-        var helper, match, param, params, value;
+        var helper, match, param, params, query, value;
         helper = Router.paramHelper;
         match = this.pattern.identity(route);
         params = _.extend({}, this.defaults);
-        params.query = this.extractQueryString(route);
+        query = this.extractQueryString(route);
+        if (query != null) {
+          params.query = query;
+        }
         for (param in match) {
           if (!hasProp.call(match, param)) continue;
           value = match[param];
@@ -115,6 +121,7 @@
       }
     };
     StateRouteParameters.params = StateRouteParameters.extractParams;
+    StateRouteParameters.chainParams = StateRouteParameters.extractChainParams;
     StateRouteAssemble = {
       included: function(Class) {
         Class.param('assembler', {
@@ -212,7 +219,21 @@
     Router.go = function(state, params) {
       return Router.navigate(Router.url(state, params), true);
     };
-    Router["switch"] = function(state, params) {
+    Router.replace = function(state, params) {
+      return Router.navigate(Router.url(state, params), {
+        load: true,
+        replace: true
+      });
+    };
+    Router["switch"] = function(arg1, arg2) {
+      var params, state;
+      if (typeof arg1 === 'string' || arg1 instanceof State) {
+        state = arg1;
+        params = arg2;
+      } else {
+        state = Router.currentState;
+        params = arg1;
+      }
       return Router.go(state, _.extend({}, Router.currentParams, params));
     };
     Router.navigate = function(route, options) {
@@ -220,12 +241,12 @@
     };
     Router.transition = function(state, params) {
       var fromParams, fromRoute, fromState, toParams, toRoute, toState, transition;
-      fromState = Router.currentState;
-      fromParams = Router.currentParams;
       fromRoute = Router.currentRoute;
-      toState = Router.states.fetch(state);
-      toParams = params || {};
+      fromParams = Router.currentParams;
+      fromState = Router.currentState;
       toRoute = Router.history.route;
+      toState = Router.states.fetch(state);
+      toParams = _.extend(toState.params(toRoute), params);
       transition = new Transition({
         fromState: fromState,
         fromParams: fromParams,
@@ -413,7 +434,7 @@
         return -1;
       };
 
-      StateStore.prototype.map = function(callback) {
+      StateStore.prototype.draw = function(callback) {
         var parentsStack, thisApi;
         parentsStack = [];
         thisApi = function(name) {

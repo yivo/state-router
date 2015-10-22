@@ -35,7 +35,7 @@ class StateStore extends BaseClass
       return i if obj is _state
     -1
 
-  map: (callback) ->
+  draw: (callback) ->
     parentsStack  = []
     thisApi       = (name) ->
       length = arguments.length

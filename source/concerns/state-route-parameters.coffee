@@ -14,11 +14,17 @@ StateRouteParameters =
           helper.decode(param, value)
     params
 
+  # TODO Check if we want query here?
+  extractChainParams: (route) ->
+    @identityParams(route)
+
   identityParams: (route) ->
     helper = Router.paramHelper
     match  = @pattern.identity(route)
     params = _.extend({}, @defaults)
-    params.query = @extractQueryString(route)
+
+    query         = @extractQueryString(route)
+    params.query  = query if query?
 
     for own param, value of match
       if value? and not helper.refersToRegexMatch(param)
@@ -29,4 +35,5 @@ StateRouteParameters =
   extractQueryString: (route) ->
     XRegExp.exec(route, Router.patternCompiler.reQueryString)?.query
 
-StateRouteParameters.params = StateRouteParameters.extractParams
+StateRouteParameters.params       = StateRouteParameters.extractParams
+StateRouteParameters.chainParams  = StateRouteParameters.extractChainParams

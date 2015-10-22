@@ -11,6 +11,7 @@ Router.start = ->
 Router.stop = ->
   Router.notify 'stop'
 
+# TODO Router.url({})
 Router.url = (state, params) ->
   c = if Router.history.pushStateBased then '/' else '#'
   c + Router.states.fetch(state).route(params)
@@ -18,19 +19,29 @@ Router.url = (state, params) ->
 Router.go = (state, params) ->
   Router.navigate(Router.url(state, params), true)
 
-Router.switch = (state, params) ->
+Router.replace = (state, params) ->
+  Router.navigate(Router.url(state, params), load: yes, replace: yes)
+
+Router.switch = (arg1, arg2) ->
+  if typeof arg1 is 'string' or arg1 instanceof State
+    state   = arg1
+    params  = arg2
+  else
+    state   = Router.currentState
+    params  = arg1
   Router.go(state, _.extend({}, Router.currentParams, params))
 
 Router.navigate = (route, options) ->
   Router.history.navigate(route, options)
 
 Router.transition = (state, params) ->
-  fromState  = Router.currentState
-  fromParams = Router.currentParams
   fromRoute  = Router.currentRoute
-  toState    = Router.states.fetch(state)
-  toParams   = params || {}
+  fromParams = Router.currentParams
+  fromState  = Router.currentState
+
   toRoute    = Router.history.route
+  toState    = Router.states.fetch(state)
+  toParams   = _.extend(toState.params(toRoute), params)
 
   transition = new Transition({fromState, fromParams, fromRoute, toState, toParams, toRoute})
   transition.dispatch()
