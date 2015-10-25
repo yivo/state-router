@@ -33,6 +33,7 @@
     "property-accessors": "yivo/property-accessors",
     "publisher-subscriber": "yivo/publisher-subscriber",
     "xregexp": "^2.0.0",
-    "yess": "yivo/yess"
+    "yess": "yivo/yess",
+    "gulp-coffee-comments": "yivo/gulp-coffee-comments"
   }
 }

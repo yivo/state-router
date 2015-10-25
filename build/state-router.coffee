@@ -1,9 +1,15 @@
 ((root, factory) ->
+
+  # AMD
   if typeof define is 'function' and define.amd
     define ['lodash', 'jquery', 'XRegExp', 'construct-with', 'publisher-subscriber', 'property-accessors', 'yess', 'ize', 'coffee-concerns'], (_, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors) ->
       root.StateRouter = factory(root, _, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors)
+
+  # CommonJS
   else if typeof module is 'object' && typeof module.exports is 'object'
     module.exports = factory(root, require('lodash'), require('jquery'), require('XRegExp'), require('construct-with'), require('publisher-subscriber'), require('property-accessors'), require('yess'), require('ize'), require('coffee-concerns'))
+
+  # Browser and the rest
   else
     root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.ConstructWith, root.PublisherSubscriber, root.PropertyAccessors)
   return
@@ -499,7 +505,6 @@
     #     2) Parameter:        directory/view/root(?:/(?<path>[^?]*?))?
     #   XRegExp: directory/view/root(?:/(?<path>[^?]*?))?
     #   RegExp:  directory\/view\/root(?:\/([^?]*?))?
-    #
     preprocessParams: (path) ->
       @replaceParams(path, @paramPreprocessor)
   

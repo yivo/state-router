@@ -35,7 +35,6 @@ class PathDecorator extends BaseClass
   #     2) Parameter:        directory/view/root(?:/(?<path>[^?]*?))?
   #   XRegExp: directory/view/root(?:/(?<path>[^?]*?))?
   #   RegExp:  directory\/view\/root(?:\/([^?]*?))?
-  #
   preprocessParams: (path) ->
     @replaceParams(path, @paramPreprocessor)
 

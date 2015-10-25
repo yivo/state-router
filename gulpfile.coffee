@@ -1,14 +1,15 @@
-gulp        = require 'gulp'
-connect     = require 'gulp-connect'
-concat      = require 'gulp-concat'
-coffee      = require 'gulp-coffee'
-preprocess  = require 'gulp-preprocess'
-iife        = require 'gulp-iife'
-uglify      = require 'gulp-uglify'
-rename      = require 'gulp-rename'
-del         = require 'del'
-plumber     = require 'gulp-plumber'
-connect     = require 'gulp-connect'
+gulp            = require 'gulp'
+connect         = require 'gulp-connect'
+concat          = require 'gulp-concat'
+coffee          = require 'gulp-coffee'
+coffeeComments  = require 'gulp-coffee-comments'
+preprocess      = require 'gulp-preprocess'
+iife            = require 'gulp-iife'
+uglify          = require 'gulp-uglify'
+rename          = require 'gulp-rename'
+del             = require 'del'
+plumber         = require 'gulp-plumber'
+connect         = require 'gulp-connect'
 
 gulp.task 'default', ['build', 'watch', 'server'], ->
 
@@ -32,6 +33,7 @@ gulp.task 'build', ->
   .pipe iife {dependencies, global}
   .pipe concat('state-router.coffee')
   .pipe gulp.dest('build')
+  .pipe coffeeComments()
   .pipe coffee()
   .pipe concat('state-router.js')
   .pipe gulp.dest('build')

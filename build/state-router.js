@@ -4,12 +4,18 @@
     indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
   (function(root, factory) {
+
+    /* AMD */
     if (typeof define === 'function' && define.amd) {
       define(['lodash', 'jquery', 'XRegExp', 'construct-with', 'publisher-subscriber', 'property-accessors', 'yess', 'ize', 'coffee-concerns'], function(_, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors) {
         return root.StateRouter = factory(root, _, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors);
       });
+
+      /* CommonJS */
     } else if (typeof module === 'object' && typeof module.exports === 'object') {
       module.exports = factory(root, require('lodash'), require('jquery'), require('XRegExp'), require('construct-with'), require('publisher-subscriber'), require('property-accessors'), require('yess'), require('ize'), require('coffee-concerns'));
+
+      /* Browser and the rest */
     } else {
       root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.ConstructWith, root.PublisherSubscriber, root.PropertyAccessors);
     }
@@ -88,12 +94,22 @@
           value = match[param];
           if (!helper.refersToRegexMatch(param)) {
             if (value != null) {
-              params[param] = helper.refersToQueryString(param) ? value : helper.decode(param, value);
+              params[param] = (function() {
+                if (helper.refersToQueryString(param)) {
+                  return value;
+                } else {
+
+                  /* TODO Check if we need to decode param here */
+                  return helper.decode(param, value);
+                }
+              })();
             }
           }
         }
         return params;
       },
+
+      /* TODO Check if we want query here? */
       extractChainParams: function(route) {
         return this.identityParams(route);
       },
@@ -110,6 +126,8 @@
           if (!hasProp.call(match, param)) continue;
           value = match[param];
           if ((value != null) && !helper.refersToRegexMatch(param)) {
+
+            /* TODO Check if we need to decode param here */
             params[param] = helper.decode(param, value);
           }
         }
@@ -211,6 +229,8 @@
     Router.stop = function() {
       return Router.notify('stop');
     };
+
+    /* TODO Router.url({}) */
     Router.url = function(state, params) {
       var c;
       c = Router.history.pushStateBased ? '/' : '#';
@@ -440,9 +460,13 @@
         thisApi = function(name) {
           var base, children, length, options, state;
           length = arguments.length;
+
+          /* Support state('root', ->) signature */
           if (length > 1 && _.isFunction(arguments[1])) {
             children = arguments[1];
             state = Router.states.get(name);
+
+            /* Support state('root', {}, ->) signature */
           } else if (length > 1 && _.isObject(arguments[1])) {
             options = arguments[1];
             base = _.last(parentsStack);
@@ -685,6 +709,35 @@
         }
       };
 
+
+      /*
+        @example Required param
+          Path:    blog/post/:id
+          XRegExp: blog\/post\/(?<id>[^\/?]+)
+          RegExp:  blog\/post\/([^\/?]+)
+       
+        @example Optional param
+          Path:    users(/:searchConditions)
+          Steps:
+            1) Optional segment: users(?:/:searchConditions)?
+            2) Parameter:        users(?:/(?<searchConditions>[^/?]+))?
+          XRegExp: users(?:/(?<searchConditions>[^/?]+))?
+          RegExp:  users(?:\/([^\/?]+))?
+       
+        @example Required splat param
+          Path:    download/*:filepath
+          XRegExp: download/(?<filepath>[^?]*?)
+          RegExp:  download\/([^?]*?)
+       
+        @example Optional splat param
+          Path:    directory/view/root(/*:path)
+          Steps:
+            1) Optional segment: directory/view/root(?:/*:path)?
+            2) Parameter:        directory/view/root(?:/(?<path>[^?]*?))?
+          XRegExp: directory/view/root(?:/(?<path>[^?]*?))?
+          RegExp:  directory\/view\/root(?:\/([^?]*?))?
+       */
+
       PathDecorator.prototype.preprocessParams = function(path) {
         return this.replaceParams(path, this.paramPreprocessor);
       };
@@ -713,7 +766,14 @@
           return function() {
             var currentState, currentStateChain, enterStates, ignoreStates, k, l, leaveStates, len, len1, nextState, nextStateChain, state;
             _this.dispatcherTransition = transition;
+
+            /* You can prevent from transitioning in this hook, for example. */
             Router.notify('transitionStart', transition);
+
+            /*
+              Do absolutely nothing if transition was prevented or aborted.
+              You can retry transition by doing `transition.retry()`.
+             */
             if (transition.prevented) {
               _this.dispatcherTransition = null;
               Router.notify('transitionPrevent', transition);
@@ -780,7 +840,11 @@
       Dispatcher.prototype.enterState = function(state, transition) {
         var controller, ctrlClass, parentCtrl, ref, rootCtrl, rootState;
         Router.notify('stateEnterStart', state, transition);
+
+        /* You have aborted transition in `stateEnterStart` hook? */
         if (transition.aborted) {
+
+          /* Notify outer world and return. */
           Router.notify('stateEnterAbort', state, transition);
           return;
         }
@@ -798,23 +862,41 @@
             controller.enter(transition.toParams, transition);
           }
         }
+
+        /* You have aborted transition in controller? */
         if (transition.aborted) {
+
+          /* Controller has been created. We must do some cleanup. */
           if (controller != null) {
             if (typeof controller.leave === "function") {
               controller.leave();
             }
           }
+
+          /* Notify outer world. */
           Router.notify('stateEnterAbort', state, transition);
+
+          /* Transition hasn't been aborted. */
         } else {
+
+          /* Save controller into private property: */
           state.__controller = controller;
+
+          /* Save parameters identity into private property: */
           state.__paramsIdentity = state.identityParams(transition.route);
+
+          /* Notify outer world. */
           Router.notify('stateEnterSuccess', state, transition);
         }
       };
 
       Dispatcher.prototype.leaveState = function(state, transition) {
+
+        /* Notify outer world than state will be leaved. */
         var controller;
         Router.notify('stateLeaveStart', state, transition);
+
+        /* You have aborted state leave in hook? */
         if (transition.aborted) {
           Router.notify('stateLeaveAbort', state, transition);
           return;
@@ -825,9 +907,13 @@
             controller.leave(transition.params, transition);
           }
         }
+
+        /* You have aborted transition in controller? */
         if (transition.aborted) {
           Router.notify('stateLeaveAbort', state, transition);
           return;
+
+          /* Transition hasn't been aborted. */
         } else {
           delete state.__paramsIdentity;
           delete state.__controller;
@@ -1086,6 +1172,8 @@
       };
 
       History.prototype._updateFragment = function(route, replace) {
+
+        /* TODO Fix this */
         var href;
         route = route.replace(/\?.*$/, '');
         if (replace) {
@@ -1165,21 +1253,40 @@
       };
 
       LinksInterceptor.prototype.intercept = function(e) {
+
+        /*
+          Only intercept left-clicks
+          Allow action "Open in new tab" (CTRL + Left click or Command + Left click)
+         */
         var $link, href, intercept, ref, route;
         if (e.which !== 1 || this.keyPressed) {
           return;
         }
         $link = Router.$(e.currentTarget);
+
+        /*
+          Get the href
+          Stop processing if there isn't one
+         */
         if (!(href = $link.attr('href'))) {
           return;
         }
+
+        /*
+          Determine if we're supposed to bypass the link
+          based on its attributes
+         */
         intercept = (ref = $link.attr('intercept')) != null ? ref : $link.data('intercept');
         if (intercept === 'false') {
           return;
         }
+
+        /* Return if the URI is absolute, or if URI contains scheme */
         if (Router.matchURIScheme(href) != null) {
           return;
         }
+
+        /* If we haven't been stopped yet, then we prevent the default action */
         e.preventDefault();
         route = Router.history.pushStateBased ? History.derivePath($link[0]) : History.deriveFragment($link[0]);
         Router.navigate(route, true);
