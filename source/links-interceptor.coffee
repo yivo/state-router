@@ -15,7 +15,7 @@ class LinksInterceptor extends BaseClass
 
   constructor: ->
     super
-    _.bindMethod(this, 'intercept', 'onKeyDown', 'onKeyUp')
+    _.bindMethod(this, 'intercept')
     @started = false
 
   start: ->
@@ -23,12 +23,8 @@ class LinksInterceptor extends BaseClass
       throw new Error "[#{Router}] Links interceptor has already been started!"
 
     @$document  = Router.$(document)
-    @$window    = Router.$(window)
 
     @$document.on('click.LinksInterceptor', 'a', @intercept)
-    @$window
-      .on 'keydown.LinksInterceptor', @onKeyDown
-      .on 'keyup.LinksInterceptor',   @onKeyUp
     @started = true
     this
 
@@ -37,15 +33,8 @@ class LinksInterceptor extends BaseClass
       throw new Error "[#{Router}] Links interceptor hasn't been started!"
 
     @$document.off('.LinksInterceptor')
-    @$window.off('.LinksInterceptor')
     @started = false
     this
-
-  onKeyDown: ->
-    @keyPressed = true
-
-  onKeyUp: ->
-    @keyPressed = false
 
   intercept: (e) ->
     # Only intercept left-clicks
@@ -55,7 +44,11 @@ class LinksInterceptor extends BaseClass
       return
 
     # Allow action "Open in new tab" (CTRL + Left click or Command + Left click)
-    if @keyPressed
+    # http://stackoverflow.com/questions/20087368/how-to-detect-if-user-it-trying-to-open-a-link-in-a-new-tab
+    #
+    # e.metaKey checks Apple Keyboard
+    # e.button checks middle click, > IE9 + Everyone else
+    if e.ctrlKey or e.shiftKey or e.metaKey or e.button? is 1
       Router.notify 'linksInterceptor:interceptCancel',
                     'Links are not intercepted when key is pressed. This allows user to open link in new tab.'
       return

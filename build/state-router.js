@@ -1220,7 +1220,7 @@
 
       function LinksInterceptor() {
         LinksInterceptor.__super__.constructor.apply(this, arguments);
-        _.bindMethod(this, 'intercept', 'onKeyDown', 'onKeyUp');
+        _.bindMethod(this, 'intercept');
         this.started = false;
       }
 
@@ -1229,9 +1229,7 @@
           throw new Error("[" + Router + "] Links interceptor has already been started!");
         }
         this.$document = Router.$(document);
-        this.$window = Router.$(window);
         this.$document.on('click.LinksInterceptor', 'a', this.intercept);
-        this.$window.on('keydown.LinksInterceptor', this.onKeyDown).on('keyup.LinksInterceptor', this.onKeyUp);
         this.started = true;
         return this;
       };
@@ -1241,17 +1239,8 @@
           throw new Error("[" + Router + "] Links interceptor hasn't been started!");
         }
         this.$document.off('.LinksInterceptor');
-        this.$window.off('.LinksInterceptor');
         this.started = false;
         return this;
-      };
-
-      LinksInterceptor.prototype.onKeyDown = function() {
-        return this.keyPressed = true;
-      };
-
-      LinksInterceptor.prototype.onKeyUp = function() {
-        return this.keyPressed = false;
       };
 
       LinksInterceptor.prototype.intercept = function(e) {
@@ -1263,8 +1252,14 @@
           return;
         }
 
-        /* Allow action "Open in new tab" (CTRL + Left click or Command + Left click) */
-        if (this.keyPressed) {
+        /*
+          Allow action "Open in new tab" (CTRL + Left click or Command + Left click)
+          http://stackoverflow.com/questions/20087368/how-to-detect-if-user-it-trying-to-open-a-link-in-a-new-tab
+         
+          e.metaKey checks Apple Keyboard
+          e.button checks middle click, > IE9 + Everyone else
+         */
+        if (e.ctrlKey || e.shiftKey || e.metaKey || (e.button != null) === 1) {
           Router.notify('linksInterceptor:interceptCancel', 'Links are not intercepted when key is pressed. This allows user to open link in new tab.');
           return;
         }
