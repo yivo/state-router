@@ -62,6 +62,7 @@
               params[param] ?= value
           state = state.base
         params
+  
   StateRouteParameters =
   
     extractParams: (route) ->
@@ -101,6 +102,7 @@
   
   StateRouteParameters.params       = StateRouteParameters.extractParams
   StateRouteParameters.chainParams  = StateRouteParameters.extractChainParams
+  
   StateRouteAssemble =
   
     included: (Class) ->
@@ -147,6 +149,7 @@
       own
   
   StateRouteAssemble.route = StateRouteAssemble.assembleRoute
+  
   StateStoreFrameworkFeatures = do ->
   
     Concern = {}
@@ -168,6 +171,7 @@
           this
   
     Concern
+  
   _.extend(Router, PublisherSubscriber.InstanceMembers)
   
   Router.$ = $
@@ -234,12 +238,14 @@
   
     Class = Router.controllerLookup(Class) if typeof Class is 'string'
     Class
+  
   class BaseClass
   
     @include ConstructWith
   
     constructor: (options) ->
       @constructWith(options)
+  
   class State extends BaseClass
   
     @include StateDefaultParameters
@@ -293,6 +299,7 @@
       state = this
       ++depth while state = state.base
       depth
+  
   class StateStore extends BaseClass
   
     @include StateStoreFrameworkFeatures
@@ -354,6 +361,7 @@
           parentsStack.pop()
         Router
       callback(thisApi)
+  
   class StateBuilder extends BaseClass
   
     build: (name, base, data) ->
@@ -389,6 +397,7 @@
       options = arguments[2] if length > 2
   
     Router.stateBuilder.build(name, base, options)
+  
   class StateMatcher extends BaseClass
   
     match: (route) ->
@@ -404,6 +413,7 @@
         throw new Error "[#{Router}] None of states matched route '#{route}' and no 404 state was found"
   
       match
+  
   class Pattern extends BaseClass
   
     @param 'base'
@@ -441,6 +451,7 @@
   
     @fromRegexSource: (source, options) ->
       new this(extend({}, options, {source}))
+  
   class PatternCompiler extends BaseClass
   
     rsQueryString:  '(?:\\?(?<query>([\\s\\S]*)))?'
@@ -468,6 +479,7 @@
         source = source + @rightBoundary
   
       source
+  
   class PathDecorator extends BaseClass
   
     @params 'paramPreprocessor', 'reEscape', 'escapeReplacement'
@@ -513,6 +525,7 @@
   
     escape: (path) ->
       path.replace(@reEscape, @escapeReplacement)
+  
   class Dispatcher extends BaseClass
   
     dispatch: (transition) ->
@@ -658,6 +671,7 @@
         _.isEqual(_.omit(a, 'query'), _.omit(b, 'query'))
       else
         _.isEqual(a, b)
+  
   class ParamHelper extends BaseClass
   
     reArrayIndex: /^[0-9]+$/
@@ -676,6 +690,7 @@
   
     decode: (param, value) ->
       decodeURIComponent(value)
+  
   class Transition extends BaseClass
   
     @param 'fromState'
@@ -716,6 +731,7 @@
       s += if @fromState then " #{@fromState.name}" else ' <initial>'
       s += " -> #{@toState.name}"
       s
+  
   Router.on 'start', ->
     _.delay -> Router.history.start()
   
@@ -853,6 +869,7 @@
       if @started
         throw new Error "[#{Router}] History has already been started!"
       true
+  
   Router.on 'start', ->
     Router.linksInterceptor.start()
   
@@ -929,6 +946,7 @@
   
       Router.navigate(route, true)
       return
+  
   console.debug = (->) unless _.isFunction(console.debug)
   
   Router.on 'routeChange', do ->
@@ -1002,6 +1020,7 @@
   Router.on 'stateLeaveStart', (state) ->
     console.debug "[#{Router}] #{_.repeat('  ', state.depth)}Leaving #{state}..."
   
+  
   _.extend Router, {
     State
     StateStore
@@ -1022,4 +1041,5 @@
   }
   
   Router
+  
 )
