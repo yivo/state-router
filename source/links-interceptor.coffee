@@ -4,7 +4,9 @@ Router.on 'start', ->
 Router.on 'stop', ->
   Router.linksInterceptor.stop()
 
-Router.reURIScheme = /^(\w+):(?:\/\/)?/
+Router.reURIScheme      = /^(\w+):(?:\/\/)?/
+Router.reJavaScriptURI  = /^\s*javascript:(.*)$/
+Router.reAnchorURI      = /^\s*(#.*)$/
 
 Router.matchURIScheme = (str) ->
   str?.match?(Router.reURIScheme)?[0]
@@ -47,22 +49,49 @@ class LinksInterceptor extends BaseClass
 
   intercept: (e) ->
     # Only intercept left-clicks
+    if e.which isnt 1
+      Router.notify 'linksInterceptor:interceptCancel',
+                    'Only left-clicks are intercepted.'
+      return
+
     # Allow action "Open in new tab" (CTRL + Left click or Command + Left click)
-    return if e.which isnt 1 or @keyPressed
+    if @keyPressed
+      Router.notify 'linksInterceptor:interceptCancel',
+                    'Links are not intercepted when key is pressed. This allows user to open link in new tab.'
+      return
 
     $link = Router.$(e.currentTarget)
 
     # Get the href
     # Stop processing if there isn't one
-    return unless href = $link.attr('href')
+    unless href = $link.attr('href')
+      Router.notify 'linksInterceptor:interceptCancel',
+                    "Link is missing href attribute or it's value is blank."
+      return
+
+    if Router.reJavaScriptURI.test(href)
+      Router.notify 'linksInterceptor:interceptCancel',
+                    'URI contains javascript: expression.'
+      return
+
+    if Router.history.hashChangeBased and Router.reAnchorURI.test(href)
+      Router.notify 'linksInterceptor:interceptCancel',
+                    'Anchor URIs are not intercepted.'
+      return
 
     # Determine if we're supposed to bypass the link
-    # based on its attributes
+    # based on it's attributes
     intercept = $link.attr('intercept') ? $link.data('intercept')
-    return if intercept is 'false'
+    if intercept in ['false', false]
+      Router.notify 'linksInterceptor:interceptCancel',
+                    "Link interception bypassed based on it's attribute."
+      return
 
     # Return if the URI is absolute, or if URI contains scheme
-    return if Router.matchURIScheme(href)?
+    if Router.matchURIScheme(href)?
+      Router.notify 'linksInterceptor:interceptCancel',
+                    'Absolute URI or URI with scheme are not intercepted.'
+      return
 
     # If we haven't been stopped yet, then we prevent the default action
     e.preventDefault()
@@ -71,6 +100,8 @@ class LinksInterceptor extends BaseClass
       History.derivePath($link[0])
     else
       History.deriveFragment($link[0])
+
+    Router.notify('linksInterceptor:intercept', route)
 
     Router.navigate(route, true)
     return

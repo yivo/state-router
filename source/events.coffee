@@ -70,3 +70,9 @@ Router.on 'stateLeaveSuccess', (state) ->
 
 Router.on 'stateLeaveStart', (state) ->
   console.debug "[#{Router}] #{_.repeat('  ', state.depth)}Leaving #{state}..."
+
+Router.on 'linksInterceptor:interceptCancel', (reason) ->
+  console.debug "[#{Router}] Link interception cancelled. Reason: #{reason}"
+
+Router.on 'linksInterceptor:intercept', (route) ->
+  console.debug "[#{Router}] Processing interception. Route: #{route}"

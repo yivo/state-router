@@ -1209,6 +1209,8 @@
       return Router.linksInterceptor.stop();
     });
     Router.reURIScheme = /^(\w+):(?:\/\/)?/;
+    Router.reJavaScriptURI = /^\s*javascript:(.*)$/;
+    Router.reAnchorURI = /^\s*(#.*)$/;
     Router.matchURIScheme = function(str) {
       var ref;
       return str != null ? typeof str.match === "function" ? (ref = str.match(Router.reURIScheme)) != null ? ref[0] : void 0 : void 0 : void 0;
@@ -1254,12 +1256,16 @@
 
       LinksInterceptor.prototype.intercept = function(e) {
 
-        /*
-          Only intercept left-clicks
-          Allow action "Open in new tab" (CTRL + Left click or Command + Left click)
-         */
+        /* Only intercept left-clicks */
         var $link, href, intercept, ref, route;
-        if (e.which !== 1 || this.keyPressed) {
+        if (e.which !== 1) {
+          Router.notify('linksInterceptor:interceptCancel', 'Only left-clicks are intercepted.');
+          return;
+        }
+
+        /* Allow action "Open in new tab" (CTRL + Left click or Command + Left click) */
+        if (this.keyPressed) {
+          Router.notify('linksInterceptor:interceptCancel', 'Links are not intercepted when key is pressed. This allows user to open link in new tab.');
           return;
         }
         $link = Router.$(e.currentTarget);
@@ -1269,26 +1275,38 @@
           Stop processing if there isn't one
          */
         if (!(href = $link.attr('href'))) {
+          Router.notify('linksInterceptor:interceptCancel', "Link is missing href attribute or it's value is blank.");
+          return;
+        }
+        if (Router.reJavaScriptURI.test(href)) {
+          Router.notify('linksInterceptor:interceptCancel', 'URI contains javascript: expression.');
+          return;
+        }
+        if (Router.history.hashChangeBased && Router.reAnchorURI.test(href)) {
+          Router.notify('linksInterceptor:interceptCancel', 'Anchor URIs are not intercepted.');
           return;
         }
 
         /*
           Determine if we're supposed to bypass the link
-          based on its attributes
+          based on it's attributes
          */
         intercept = (ref = $link.attr('intercept')) != null ? ref : $link.data('intercept');
-        if (intercept === 'false') {
+        if (intercept === 'false' || intercept === false) {
+          Router.notify('linksInterceptor:interceptCancel', "Link interception bypassed based on it's attribute.");
           return;
         }
 
         /* Return if the URI is absolute, or if URI contains scheme */
         if (Router.matchURIScheme(href) != null) {
+          Router.notify('linksInterceptor:interceptCancel', 'Absolute URI or URI with scheme are not intercepted.');
           return;
         }
 
         /* If we haven't been stopped yet, then we prevent the default action */
         e.preventDefault();
         route = Router.history.pushStateBased ? History.derivePath($link[0]) : History.deriveFragment($link[0]);
+        Router.notify('linksInterceptor:intercept', route);
         Router.navigate(route, true);
       };
 
@@ -1364,6 +1382,12 @@
     });
     Router.on('stateLeaveStart', function(state) {
       return console.debug("[" + Router + "] " + (_.repeat('  ', state.depth)) + "Leaving " + state + "...");
+    });
+    Router.on('linksInterceptor:interceptCancel', function(reason) {
+      return console.debug("[" + Router + "] Link interception cancelled. Reason: " + reason);
+    });
+    Router.on('linksInterceptor:intercept', function(route) {
+      return console.debug("[" + Router + "] Processing interception. Route: " + route);
     });
     _.extend(Router, {
       State: State,
