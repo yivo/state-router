@@ -1282,7 +1282,7 @@
           Router.notify('linksInterceptor:interceptCancel', 'URI contains javascript: expression.');
           return;
         }
-        if (Router.history.hashChangeBased && Router.reAnchorURI.test(href)) {
+        if (Router.history.pushChangeBased && Router.reAnchorURI.test(href)) {
           Router.notify('linksInterceptor:interceptCancel', 'Anchor URIs are not intercepted.');
           return;
         }
@@ -1298,7 +1298,7 @@
         }
 
         /* Return if the URI is absolute, or if URI contains scheme */
-        if (Router.matchURIScheme(href) != null) {
+        if (Router.reURIScheme.test(href)) {
           Router.notify('linksInterceptor:interceptCancel', 'Absolute URI or URI with scheme are not intercepted.');
           return;
         }

@@ -946,7 +946,7 @@
                       'URI contains javascript: expression.'
         return
   
-      if Router.history.hashChangeBased and Router.reAnchorURI.test(href)
+      if Router.history.pushChangeBased and Router.reAnchorURI.test(href)
         Router.notify 'linksInterceptor:interceptCancel',
                       'Anchor URIs are not intercepted.'
         return
@@ -960,7 +960,7 @@
         return
   
       # Return if the URI is absolute, or if URI contains scheme
-      if Router.matchURIScheme(href)?
+      if Router.reURIScheme.test(href)
         Router.notify 'linksInterceptor:interceptCancel',
                       'Absolute URI or URI with scheme are not intercepted.'
         return
