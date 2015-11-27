@@ -12,7 +12,10 @@
   # Browser and the rest
   else
     root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.ConstructWith, root.PublisherSubscriber, root.PropertyAccessors)
+
+  # No return value
   return
+
 )(this, (__root__, _, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors) ->
   XRegExp = XRegExpAPI.XRegExp or XRegExpAPI
   

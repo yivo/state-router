@@ -19,6 +19,8 @@
     } else {
       root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.ConstructWith, root.PublisherSubscriber, root.PropertyAccessors);
     }
+
+    /* No return value */
   })(this, function(__root__, _, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors) {
     var BaseClass, Dispatcher, History, LinksInterceptor, ParamHelper, PathDecorator, Pattern, PatternCompiler, Router, State, StateBuilder, StateDefaultParameters, StateMatcher, StateRouteAssemble, StateRouteParameters, StateStore, StateStoreFrameworkFeatures, Transition, XRegExp;
     XRegExp = XRegExpAPI.XRegExp || XRegExpAPI;
