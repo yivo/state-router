@@ -1,62 +1,58 @@
-((root, factory) ->
+((factory) ->
+
+  # Browser and WebWorker
+  root = if typeof self is 'object' and self?.self is self
+    self
+
+  # Server
+  else if typeof global is 'object' and global?.global is global
+    global
 
   # AMD
   if typeof define is 'function' and define.amd
-    define ['lodash', 'jquery', 'XRegExp', 'construct-with', 'publisher-subscriber', 'property-accessors', 'yess', 'ize', 'coffee-concerns'], (_, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors) ->
-      root.StateRouter = factory(root, _, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors)
+    define ['lodash', 'jquery', 'XRegExp', 'coffee-concerns', 'callbacks', 'construct-with', 'publisher-subscriber', 'property-accessors', 'yess', 'exports'], (_, $, XRegExpAPI, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors) ->
+      root.StateRouter = factory(root, _, $, XRegExpAPI, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors)
 
   # CommonJS
-  else if typeof module is 'object' && typeof module.exports is 'object'
-    module.exports = factory(root, require('lodash'), require('jquery'), require('XRegExp'), require('construct-with'), require('publisher-subscriber'), require('property-accessors'), require('yess'), require('ize'), require('coffee-concerns'))
+  else if typeof module is 'object' and module isnt null and
+          module.exports? and typeof module.exports is 'object'
+    module.exports = factory(root, require('lodash'), require('jquery'), require('XRegExp'), require('coffee-concerns'), require('callbacks'), require('construct-with'), require('publisher-subscriber'), require('property-accessors'), require('yess'))
 
   # Browser and the rest
   else
-    root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.ConstructWith, root.PublisherSubscriber, root.PropertyAccessors)
+    root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.Concerns, root.Callbacks, root.ConstructWith, root.PublisherSubscriber, root.PropertyAccessors)
 
   # No return value
   return
 
-)(this, (__root__, _, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors) ->
+)((__root__, _, $, XRegExpAPI, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors) ->
   XRegExp = XRegExpAPI.XRegExp or XRegExpAPI
   
   Router = {}
   
   do ->
-    names = 'history linksInterceptor paramHelper
-      pathDecorator patternCompiler stateBuilder
-      dispatcher stateMatcher stateStore'
+    Router.property = PropertyAccessors.ClassMembers.property
+    property        = (name, getter) -> Router.property(name, memo: true, readonly: true, getter)
   
-    define = (name) ->
-      keyName   = "_#{name}"
-      loadName  = "load#{name.capitalize()}"
-      className = name.classCase()
-  
-      Router[loadName] = ->
-        Router[keyName] ||= new Router[className](_.result(Router, "#{name}Options"))
-  
-      PropertyAccessors.property(Router, name, readonly: yes, get: loadName)
-  
-    define(name) for name in names.split(/\s+/)
-  
-    PropertyAccessors.property(Router, 'states', readonly: yes, get: 'loadStateStore')
-    return
+    property 'history',          -> new @History(_.result(this, 'historyOptions'))
+    property 'linksInterceptor', -> new @LinksInterceptor(_.result(this, 'linksInterceptorOptions'))
+    property 'paramHelper',      -> new @ParamHelper(_.result(this, 'paramHelperOptions'))
+    property 'pathDecorator',    -> new @PathDecorator(_.result(this, 'pathDecoratorOptions'))
+    property 'patternCompiler',  -> new @PatternCompiler(_.result(this, 'patternCompilerOptions'))
+    property 'stateBuilder',     -> new @StateBuilder(_.result(this, 'stateBuilderOptions'))
+    property 'dispatcher',       -> new @Dispatcher(_.result(this, 'dispatcherOptions'))
+    property 'stateMatcher',     -> new @StateMatcher(_.result(this, 'stateMatcherOptions'))
+    property 'stateStore',       -> new @StateStore(_.result(this, 'stateStoreOptions'))
+    property 'states',           -> @stateStore
   
   StateDefaultParameters =
   
     included: (Class) ->
-      Class.param 'defaults', as: '_ownDefaults'
+      Class.property 'ownDefaults', readonly: true, ->
+        @options.defaults?() or @options.defaults or {}
   
-      Class.property 'ownDefaults', ->
-        if _.isFunction(@_ownDefaults)
-          @_ownDefaults = @_ownDefaults()
-  
-        unless _.isObject(@_ownDefaults)
-          @_ownDefaults = {}
-  
-        @_ownDefaults
-  
-      Class.property 'defaults', ->
-        state = this
+      Class.property 'defaults', readonly: true, ->
+        state  = this
         params = {}
         while state
           defaults = state.ownDefaults
@@ -175,7 +171,7 @@
   
     Concern
   
-  _.extend(Router, PublisherSubscriber.InstanceMembers)
+  Concerns.extend Router, PublisherSubscriber
   
   Router.$ = $
   
@@ -223,12 +219,15 @@
     transition = new Transition({fromState, fromParams, fromRoute, toState, toParams, toRoute})
     transition.dispatch()
   
+  # TODO Remove this shit
   Router.controllerLookupNamespace = this
   
+  # TODO Remove this shit
   Router.controllerLookup = (name) ->
     ns = _.result(Router, 'controllerLookupNamespace')
     ns["#{name}Controller"] or ns[name] or ns["#{name.classCase()}Controller"] or ns[name.classCase()]
   
+  # TODO Refactor
   Router.findController = (arg) ->
     if typeof arg is 'function'
       length          = arguments.length
@@ -244,10 +243,14 @@
   
   class BaseClass
   
+    @include Callbacks
+    @include PropertyAccessors
+    @include PublisherSubscriber
     @include ConstructWith
   
     constructor: (options) ->
-      @constructWith(options)
+      @bindCallbacks()
+      @runInitializers(options)
   
   class State extends BaseClass
   
@@ -264,7 +267,7 @@
   
     constructor: ->
       super
-      @id         = _.generateId()
+      @id         = _.generateID()
       @handles404 = !!@handles404
       @abstract   = !!@abstract
       @isRoot     = !@base
@@ -384,19 +387,23 @@
       else
         throw new Error "[#{Router}] Neither path nor pattern specified for state #{name}"
   
-      _.extend data, {name, base, pattern}
+      extend data, {name, base, pattern}
   
       new State(data)
+  
+    {extend} = _
+  
+  {isObject, isString} = _
   
   Router.createState = (name) ->
     length  = arguments.length
     base    = arguments[1] if length > 1
   
-    if _.isPlainObject(base)
+    if isObject(base) and base not instanceof State
       options = base
       base    = null
     else
-      base    = Router.states.get(base) if _.isString(base)
+      base    = Router.states.get(base) if isString(base)
       options = arguments[2] if length > 2
   
     Router.stateBuilder.build(name, base, options)
@@ -420,16 +427,16 @@
   class Pattern extends BaseClass
   
     @param 'base'
-    @param 'source', as: 'source', required: yes
+    @param 'source', as: 'ownSource', required: yes
     @param 'path',   as: 'ownPath'
-  
-    {extend} = _
   
     constructor: ->
       super
-  
-      if baseSource = @base?.source
-        @source = baseSource + if @source then ('/' + @source) else ''
+      @source =
+        if baseSource = @base?.source
+          baseSource + if @ownSource then ('/' + @ownSource) else ''
+        else
+          @ownSource
   
       @type             = if @ownPath? then 'path' else 'regex'
       @regexBased       = @type is 'regex'
@@ -446,6 +453,8 @@
   
     identity: (route) ->
       XRegExp.exec(route, @reRouteIdentity)
+  
+    {extend} = _
   
     @fromPath: (path, options) ->
       decorator = Router.pathDecorator
@@ -483,6 +492,7 @@
   
       source
   
+  # TODO Bugs with splat param
   class PathDecorator extends BaseClass
   
     @params 'paramPreprocessor', 'reEscape', 'escapeReplacement'
@@ -775,14 +785,17 @@
       @hashChangeBased    = not @pushStateBased and @supportsHashChange and @options.hashChange isnt false
       @started            = false
   
-    @property 'path', ->
+    @property 'path', readonly: true, ->
       @constructor.derivePath(@location)
   
-    @property 'fragment', ->
+    @property 'fragment', readonly: true, ->
       @constructor.deriveFragment(@location)
   
-    @property 'route', ->
+    @property 'route', readonly: true, ->
       if @pushStateBased then @path else @fragment
+  
+    @property 'length', readonly: true, ->
+      @history.length
   
     start: ->
       @ensureNotStarted()

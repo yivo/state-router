@@ -1,6 +1,10 @@
 class BaseClass
 
+  @include Callbacks
+  @include PropertyAccessors
+  @include PublisherSubscriber
   @include ConstructWith
 
   constructor: (options) ->
-    @constructWith(options)
+    @bindCallbacks()
+    @runInitializers(options)

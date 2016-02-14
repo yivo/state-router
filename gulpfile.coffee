@@ -20,8 +20,8 @@ gulp.task 'build', ->
     {require: 'jquery',             global: '$'}
     {require: 'XRegExp',            global: 'XRegExp', argument: 'XRegExpAPI'}
     {require: 'yess'}
-    {require: 'ize'}
-    {require: 'coffee-concerns'}
+    {require: 'coffee-concerns',      global: 'Concerns'}
+    {require: 'callbacks',            global: 'Callbacks'}
     {require: 'construct-with',       global: 'ConstructWith'}
     {require: 'publisher-subscriber', global: 'PublisherSubscriber'}
     {require: 'property-accessors',   global: 'PropertyAccessors'}
@@ -36,6 +36,12 @@ gulp.task 'build', ->
   .pipe coffeeComments()
   .pipe coffee()
   .pipe concat('state-router.js')
+  .pipe gulp.dest('build')
+
+gulp.task 'build-min', ['build'], ->
+  gulp.src('build/state-router.js')
+  .pipe uglify()
+  .pipe rename('state-router.min.js')
   .pipe gulp.dest('build')
 
 gulp.task 'watch', ->

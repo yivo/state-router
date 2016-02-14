@@ -3,24 +3,19 @@ XRegExp = XRegExpAPI.XRegExp or XRegExpAPI
 Router = {}
 
 do ->
-  names = 'history linksInterceptor paramHelper
-    pathDecorator patternCompiler stateBuilder
-    dispatcher stateMatcher stateStore'
+  Router.property = PropertyAccessors.ClassMembers.property
+  property        = (name, getter) -> Router.property(name, memo: true, readonly: true, getter)
 
-  define = (name) ->
-    keyName   = "_#{name}"
-    loadName  = "load#{name.capitalize()}"
-    className = name.classCase()
-
-    Router[loadName] = ->
-      Router[keyName] ||= new Router[className](_.result(Router, "#{name}Options"))
-
-    PropertyAccessors.property(Router, name, readonly: yes, get: loadName)
-
-  define(name) for name in names.split(/\s+/)
-
-  PropertyAccessors.property(Router, 'states', readonly: yes, get: 'loadStateStore')
-  return
+  property 'history',          -> new @History(_.result(this, 'historyOptions'))
+  property 'linksInterceptor', -> new @LinksInterceptor(_.result(this, 'linksInterceptorOptions'))
+  property 'paramHelper',      -> new @ParamHelper(_.result(this, 'paramHelperOptions'))
+  property 'pathDecorator',    -> new @PathDecorator(_.result(this, 'pathDecoratorOptions'))
+  property 'patternCompiler',  -> new @PatternCompiler(_.result(this, 'patternCompilerOptions'))
+  property 'stateBuilder',     -> new @StateBuilder(_.result(this, 'stateBuilderOptions'))
+  property 'dispatcher',       -> new @Dispatcher(_.result(this, 'dispatcherOptions'))
+  property 'stateMatcher',     -> new @StateMatcher(_.result(this, 'stateMatcherOptions'))
+  property 'stateStore',       -> new @StateStore(_.result(this, 'stateStoreOptions'))
+  property 'states',           -> @stateStore
 
 # @include concerns/state-default-parameters.coffee
 # @include concerns/state-route-parameters.coffee

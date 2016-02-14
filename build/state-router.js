@@ -3,69 +3,91 @@
     extend1 = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
     indexOf = [].indexOf || function(item) { for (var i = 0, l = this.length; i < l; i++) { if (i in this && this[i] === item) return i; } return -1; };
 
-  (function(root, factory) {
+  (function(factory) {
+
+    /* Browser and WebWorker */
+    var root;
+    root = (function() {
+      if (typeof self === 'object' && (typeof self !== "undefined" && self !== null ? self.self : void 0) === self) {
+        return self;
+
+        /* Server */
+      } else if (typeof global === 'object' && (typeof global !== "undefined" && global !== null ? global.global : void 0) === global) {
+        return global;
+      }
+    })();
 
     /* AMD */
     if (typeof define === 'function' && define.amd) {
-      define(['lodash', 'jquery', 'XRegExp', 'construct-with', 'publisher-subscriber', 'property-accessors', 'yess', 'ize', 'coffee-concerns'], function(_, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors) {
-        return root.StateRouter = factory(root, _, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors);
+      define(['lodash', 'jquery', 'XRegExp', 'coffee-concerns', 'callbacks', 'construct-with', 'publisher-subscriber', 'property-accessors', 'yess', 'exports'], function(_, $, XRegExpAPI, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors) {
+        return root.StateRouter = factory(root, _, $, XRegExpAPI, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors);
       });
 
       /* CommonJS */
-    } else if (typeof module === 'object' && typeof module.exports === 'object') {
-      module.exports = factory(root, require('lodash'), require('jquery'), require('XRegExp'), require('construct-with'), require('publisher-subscriber'), require('property-accessors'), require('yess'), require('ize'), require('coffee-concerns'));
+    } else if (typeof module === 'object' && module !== null && (module.exports != null) && typeof module.exports === 'object') {
+      module.exports = factory(root, require('lodash'), require('jquery'), require('XRegExp'), require('coffee-concerns'), require('callbacks'), require('construct-with'), require('publisher-subscriber'), require('property-accessors'), require('yess'));
 
       /* Browser and the rest */
     } else {
-      root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.ConstructWith, root.PublisherSubscriber, root.PropertyAccessors);
+      root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.Concerns, root.Callbacks, root.ConstructWith, root.PublisherSubscriber, root.PropertyAccessors);
     }
 
     /* No return value */
-  })(this, function(__root__, _, $, XRegExpAPI, ConstructWith, PublisherSubscriber, PropertyAccessors) {
-    var BaseClass, Dispatcher, History, LinksInterceptor, ParamHelper, PathDecorator, Pattern, PatternCompiler, Router, State, StateBuilder, StateDefaultParameters, StateMatcher, StateRouteAssemble, StateRouteParameters, StateStore, StateStoreFrameworkFeatures, Transition, XRegExp;
+  })(function(__root__, _, $, XRegExpAPI, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors) {
+    var BaseClass, Dispatcher, History, LinksInterceptor, ParamHelper, PathDecorator, Pattern, PatternCompiler, Router, State, StateBuilder, StateDefaultParameters, StateMatcher, StateRouteAssemble, StateRouteParameters, StateStore, StateStoreFrameworkFeatures, Transition, XRegExp, isObject, isString;
     XRegExp = XRegExpAPI.XRegExp || XRegExpAPI;
     Router = {};
     (function() {
-      var define, k, len, name, names, ref;
-      names = 'history linksInterceptor paramHelper pathDecorator patternCompiler stateBuilder dispatcher stateMatcher stateStore';
-      define = function(name) {
-        var className, keyName, loadName;
-        keyName = "_" + name;
-        loadName = "load" + (name.capitalize());
-        className = name.classCase();
-        Router[loadName] = function() {
-          return Router[keyName] || (Router[keyName] = new Router[className](_.result(Router, name + "Options")));
-        };
-        return PropertyAccessors.property(Router, name, {
-          readonly: true,
-          get: loadName
-        });
+      var property;
+      Router.property = PropertyAccessors.ClassMembers.property;
+      property = function(name, getter) {
+        return Router.property(name, {
+          memo: true,
+          readonly: true
+        }, getter);
       };
-      ref = names.split(/\s+/);
-      for (k = 0, len = ref.length; k < len; k++) {
-        name = ref[k];
-        define(name);
-      }
-      PropertyAccessors.property(Router, 'states', {
-        readonly: true,
-        get: 'loadStateStore'
+      property('history', function() {
+        return new this.History(_.result(this, 'historyOptions'));
+      });
+      property('linksInterceptor', function() {
+        return new this.LinksInterceptor(_.result(this, 'linksInterceptorOptions'));
+      });
+      property('paramHelper', function() {
+        return new this.ParamHelper(_.result(this, 'paramHelperOptions'));
+      });
+      property('pathDecorator', function() {
+        return new this.PathDecorator(_.result(this, 'pathDecoratorOptions'));
+      });
+      property('patternCompiler', function() {
+        return new this.PatternCompiler(_.result(this, 'patternCompilerOptions'));
+      });
+      property('stateBuilder', function() {
+        return new this.StateBuilder(_.result(this, 'stateBuilderOptions'));
+      });
+      property('dispatcher', function() {
+        return new this.Dispatcher(_.result(this, 'dispatcherOptions'));
+      });
+      property('stateMatcher', function() {
+        return new this.StateMatcher(_.result(this, 'stateMatcherOptions'));
+      });
+      property('stateStore', function() {
+        return new this.StateStore(_.result(this, 'stateStoreOptions'));
+      });
+      return property('states', function() {
+        return this.stateStore;
       });
     })();
     StateDefaultParameters = {
       included: function(Class) {
-        Class.param('defaults', {
-          as: '_ownDefaults'
+        Class.property('ownDefaults', {
+          readonly: true
+        }, function() {
+          var base1;
+          return (typeof (base1 = this.options).defaults === "function" ? base1.defaults() : void 0) || this.options.defaults || {};
         });
-        Class.property('ownDefaults', function() {
-          if (_.isFunction(this._ownDefaults)) {
-            this._ownDefaults = this._ownDefaults();
-          }
-          if (!_.isObject(this._ownDefaults)) {
-            this._ownDefaults = {};
-          }
-          return this._ownDefaults;
-        });
-        return Class.property('defaults', function() {
+        return Class.property('defaults', {
+          readonly: true
+        }, function() {
           var defaults, param, params, state, value;
           state = this;
           params = {};
@@ -219,7 +241,7 @@
       }
       return Concern;
     })();
-    _.extend(Router, PublisherSubscriber.InstanceMembers);
+    Concerns.extend(Router, PublisherSubscriber);
     Router.$ = $;
     Router.toString = function() {
       return 'StateRouter';
@@ -279,12 +301,18 @@
       });
       return transition.dispatch();
     };
+
+    /* TODO Remove this shit */
     Router.controllerLookupNamespace = this;
+
+    /* TODO Remove this shit */
     Router.controllerLookup = function(name) {
       var ns;
       ns = _.result(Router, 'controllerLookupNamespace');
       return ns[name + "Controller"] || ns[name] || ns[(name.classCase()) + "Controller"] || ns[name.classCase()];
     };
+
+    /* TODO Refactor */
     Router.findController = function(arg) {
       var Class, index, length, rest;
       if (typeof arg === 'function') {
@@ -304,10 +332,17 @@
       return Class;
     };
     BaseClass = (function() {
+      BaseClass.include(Callbacks);
+
+      BaseClass.include(PropertyAccessors);
+
+      BaseClass.include(PublisherSubscriber);
+
       BaseClass.include(ConstructWith);
 
       function BaseClass(options) {
-        this.constructWith(options);
+        this.bindCallbacks();
+        this.runInitializers(options);
       }
 
       return BaseClass;
@@ -344,7 +379,7 @@
 
       function State() {
         State.__super__.constructor.apply(this, arguments);
-        this.id = _.generateId();
+        this.id = _.generateID();
         this.handles404 = !!this.handles404;
         this.abstract = !!this.abstract;
         this.isRoot = !this.base;
@@ -492,6 +527,8 @@
 
     })(BaseClass);
     StateBuilder = (function(superClass) {
+      var extend;
+
       extend1(StateBuilder, superClass);
 
       function StateBuilder() {
@@ -520,7 +557,7 @@
             throw new Error("[" + Router + "] Neither path nor pattern specified for state " + name);
           }
         })();
-        _.extend(data, {
+        extend(data, {
           name: name,
           base: base,
           pattern: pattern
@@ -528,20 +565,23 @@
         return new State(data);
       };
 
+      extend = _.extend;
+
       return StateBuilder;
 
     })(BaseClass);
+    isObject = _.isObject, isString = _.isString;
     Router.createState = function(name) {
       var base, length, options;
       length = arguments.length;
       if (length > 1) {
         base = arguments[1];
       }
-      if (_.isPlainObject(base)) {
+      if (isObject(base) && !(base instanceof State)) {
         options = base;
         base = null;
       } else {
-        if (_.isString(base)) {
+        if (isString(base)) {
           base = Router.states.get(base);
         }
         if (length > 2) {
@@ -583,7 +623,7 @@
       Pattern.param('base');
 
       Pattern.param('source', {
-        as: 'source',
+        as: 'ownSource',
         required: true
       });
 
@@ -591,14 +631,10 @@
         as: 'ownPath'
       });
 
-      extend = _.extend;
-
       function Pattern() {
         var baseSource, compiler, ref;
         Pattern.__super__.constructor.apply(this, arguments);
-        if (baseSource = (ref = this.base) != null ? ref.source : void 0) {
-          this.source = baseSource + (this.source ? '/' + this.source : '');
-        }
+        this.source = (baseSource = (ref = this.base) != null ? ref.source : void 0) ? baseSource + (this.ownSource ? '/' + this.ownSource : '') : this.ownSource;
         this.type = this.ownPath != null ? 'path' : 'regex';
         this.regexBased = this.type === 'regex';
         this.pathBased = this.type === 'path';
@@ -624,6 +660,8 @@
       Pattern.prototype.identity = function(route) {
         return XRegExp.exec(route, this.reRouteIdentity);
       };
+
+      extend = _.extend;
 
       Pattern.fromPath = function(path, options) {
         var decorator, source;
@@ -686,6 +724,8 @@
       return PatternCompiler;
 
     })(BaseClass);
+
+    /* TODO Bugs with splat param */
     PathDecorator = (function(superClass) {
       extend1(PathDecorator, superClass);
 
@@ -1079,20 +1119,32 @@
         this.started = false;
       }
 
-      History.property('path', function() {
+      History.property('path', {
+        readonly: true
+      }, function() {
         return this.constructor.derivePath(this.location);
       });
 
-      History.property('fragment', function() {
+      History.property('fragment', {
+        readonly: true
+      }, function() {
         return this.constructor.deriveFragment(this.location);
       });
 
-      History.property('route', function() {
+      History.property('route', {
+        readonly: true
+      }, function() {
         if (this.pushStateBased) {
           return this.path;
         } else {
           return this.fragment;
         }
+      });
+
+      History.property('length', {
+        readonly: true
+      }, function() {
+        return this.history.length;
       });
 
       History.prototype.start = function() {

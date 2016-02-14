@@ -38,14 +38,17 @@ class History extends BaseClass
     @hashChangeBased    = not @pushStateBased and @supportsHashChange and @options.hashChange isnt false
     @started            = false
 
-  @property 'path', ->
+  @property 'path', readonly: true, ->
     @constructor.derivePath(@location)
 
-  @property 'fragment', ->
+  @property 'fragment', readonly: true, ->
     @constructor.deriveFragment(@location)
 
-  @property 'route', ->
+  @property 'route', readonly: true, ->
     if @pushStateBased then @path else @fragment
+
+  @property 'length', readonly: true, ->
+    @history.length
 
   start: ->
     @ensureNotStarted()

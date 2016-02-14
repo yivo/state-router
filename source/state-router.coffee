@@ -1,4 +1,4 @@
-_.extend(Router, PublisherSubscriber.InstanceMembers)
+Concerns.extend Router, PublisherSubscriber
 
 Router.$ = $
 
@@ -46,12 +46,15 @@ Router.transition = (state, params) ->
   transition = new Transition({fromState, fromParams, fromRoute, toState, toParams, toRoute})
   transition.dispatch()
 
+# TODO Remove this shit
 Router.controllerLookupNamespace = this
 
+# TODO Remove this shit
 Router.controllerLookup = (name) ->
   ns = _.result(Router, 'controllerLookupNamespace')
   ns["#{name}Controller"] or ns[name] or ns["#{name.classCase()}Controller"] or ns[name.classCase()]
 
+# TODO Refactor
 Router.findController = (arg) ->
   if typeof arg is 'function'
     length          = arguments.length

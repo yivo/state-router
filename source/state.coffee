@@ -13,7 +13,7 @@ class State extends BaseClass
 
   constructor: ->
     super
-    @id         = _.generateId()
+    @id         = _.generateID()
     @handles404 = !!@handles404
     @abstract   = !!@abstract
     @isRoot     = !@base

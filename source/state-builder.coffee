@@ -17,19 +17,23 @@ class StateBuilder extends BaseClass
     else
       throw new Error "[#{Router}] Neither path nor pattern specified for state #{name}"
 
-    _.extend data, {name, base, pattern}
+    extend data, {name, base, pattern}
 
     new State(data)
+
+  {extend} = _
+
+{isObject, isString} = _
 
 Router.createState = (name) ->
   length  = arguments.length
   base    = arguments[1] if length > 1
 
-  if _.isPlainObject(base)
+  if isObject(base) and base not instanceof State
     options = base
     base    = null
   else
-    base    = Router.states.get(base) if _.isString(base)
+    base    = Router.states.get(base) if isString(base)
     options = arguments[2] if length > 2
 
   Router.stateBuilder.build(name, base, options)

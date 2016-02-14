@@ -1,16 +1,16 @@
 class Pattern extends BaseClass
 
   @param 'base'
-  @param 'source', as: 'source', required: yes
+  @param 'source', as: 'ownSource', required: yes
   @param 'path',   as: 'ownPath'
-
-  {extend} = _
 
   constructor: ->
     super
-
-    if baseSource = @base?.source
-      @source = baseSource + if @source then ('/' + @source) else ''
+    @source =
+      if baseSource = @base?.source
+        baseSource + if @ownSource then ('/' + @ownSource) else ''
+      else
+        @ownSource
 
     @type             = if @ownPath? then 'path' else 'regex'
     @regexBased       = @type is 'regex'
@@ -27,6 +27,8 @@ class Pattern extends BaseClass
 
   identity: (route) ->
     XRegExp.exec(route, @reRouteIdentity)
+
+  {extend} = _
 
   @fromPath: (path, options) ->
     decorator = Router.pathDecorator
