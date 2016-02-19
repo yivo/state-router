@@ -254,7 +254,7 @@
       return Router.notify('stop');
     };
 
-    /* TODO Router.url({}) */
+    /* TODO Router.url({}) (same state but different params) */
     Router.url = function(state, params) {
       var c;
       c = Router.history.pushStateBased ? '/' : '#';

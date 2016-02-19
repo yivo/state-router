@@ -11,7 +11,7 @@ Router.start = ->
 Router.stop = ->
   Router.notify 'stop'
 
-# TODO Router.url({})
+# TODO Router.url({}) (same state but different params)
 Router.url = (state, params) ->
   c = if Router.history.pushStateBased then '/' else '#'
   c + Router.states.fetch(state).route(params)
