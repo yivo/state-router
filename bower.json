@@ -17,14 +17,14 @@
     "gulpfile.*"
   ],
   "dependencies": {
-    "coffee-concerns": "yivo/coffee-concerns",
-    "construct-with": "yivo/construct-with",
-    "ize": "yivo/ize",
+    "coffee-concerns": "1.x",
+    "construct-with": "1.x",
+    "ize": "1.x",
     "jquery": "^2.1.4",
     "lodash": "^3.10.0",
-    "property-accessors": "yivo/property-accessors",
-    "publisher-subscriber": "git@github.com:yivo/publisher-subscriber.git",
+    "property-accessors": "1.x",
+    "publisher-subscriber": "1.x",
     "xregexp": "^2.0.0",
-    "yess": "yivo/yess"
+    "yess": "1.x"
   }
 }
