@@ -1,4 +1,4 @@
-class StateStore extends BaseClass
+class StateStore extends CoreObject
 
   @include StateStoreFrameworkFeatures
 

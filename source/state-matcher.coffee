@@ -1,4 +1,4 @@
-class StateMatcher extends BaseClass
+class StateMatcher extends CoreObject
 
   match: (route) ->
     states = Router.states

@@ -1,4 +1,4 @@
-class Dispatcher extends BaseClass
+class Dispatcher extends CoreObject
 
   dispatch: (transition) ->
     work = =>

@@ -1,5 +1,5 @@
 # TODO Bugs with splat param
-class PathDecorator extends BaseClass
+class PathDecorator extends CoreObject
 
   @params 'paramPreprocessor', 'reEscape', 'escapeReplacement'
 

@@ -1,4 +1,4 @@
-class PatternCompiler extends BaseClass
+class PatternCompiler extends CoreObject
 
   rsQueryString:  '(?:\\?(?<query>([\\s\\S]*)))?'
   reQueryString:  XRegExp(this::rsQueryString + '$')

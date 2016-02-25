@@ -19,24 +19,26 @@
 
     /* AMD */
     if (typeof define === 'function' && define.amd) {
-      define(['lodash', 'jquery', 'XRegExp', 'coffee-concerns', 'callbacks', 'construct-with', 'publisher-subscriber', 'property-accessors', 'yess', 'exports'], function(_, $, XRegExpAPI, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors) {
-        return root.StateRouter = factory(root, _, $, XRegExpAPI, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors);
+      define(['jquery', 'XRegExp', 'yess', 'coffee-concerns', 'callbacks', 'construct-with', 'publisher-subscriber', 'property-accessors', 'core-object', 'lodash', 'exports'], function($, XRegExpExports, _, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors, CoreObject) {
+        return root.StateRouter = factory(root, $, XRegExpExports, _, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors, CoreObject);
       });
 
       /* CommonJS */
     } else if (typeof module === 'object' && module !== null && (module.exports != null) && typeof module.exports === 'object') {
-      module.exports = factory(root, require('lodash'), require('jquery'), require('XRegExp'), require('coffee-concerns'), require('callbacks'), require('construct-with'), require('publisher-subscriber'), require('property-accessors'), require('yess'));
+      module.exports = factory(root, require('jquery'), require('XRegExp'), require('yess'), require('coffee-concerns'), require('callbacks'), require('construct-with'), require('publisher-subscriber'), require('property-accessors'), require('core-object'), require('lodash'));
 
       /* Browser and the rest */
     } else {
-      root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.Concerns, root.Callbacks, root.ConstructWith, root.PublisherSubscriber, root.PropertyAccessors);
+      root.StateRouter = factory(root, root.$, root.XRegExp, root._, root.Concerns, root.Callbacks, root.ConstructWith, root.PublisherSubscriber, root.PropertyAccessors, root.CoreObject);
     }
 
     /* No return value */
-  })(function(__root__, _, $, XRegExpAPI, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors) {
-    var BaseClass, Dispatcher, History, LinksInterceptor, ParamHelper, PathDecorator, Pattern, PatternCompiler, Router, State, StateBuilder, StateDefaultParameters, StateMatcher, StateRouteAssemble, StateRouteParameters, StateStore, StateStoreFrameworkFeatures, Transition, XRegExp, isObject, isString;
-    XRegExp = XRegExpAPI.XRegExp || XRegExpAPI;
-    Router = {};
+  })(function(__root__, $, XRegExpExports, _, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors, CoreObject) {
+    var Dispatcher, History, LinksInterceptor, ParamHelper, PathDecorator, Pattern, PatternCompiler, Router, State, StateBuilder, StateDefaultParameters, StateMatcher, StateRouteAssemble, StateRouteParameters, StateStore, StateStoreFrameworkFeatures, Transition, XRegExp, isObject, isString;
+    XRegExp = XRegExpExports.XRegExp || XRegExpExports;
+    Router = {
+      VERSION: '1.0.1'
+    };
     (function() {
       var property;
       Router.property = PropertyAccessors.ClassMembers.property;
@@ -331,23 +333,6 @@
       }
       return Class;
     };
-    BaseClass = (function() {
-      BaseClass.include(Callbacks);
-
-      BaseClass.include(PropertyAccessors);
-
-      BaseClass.include(PublisherSubscriber);
-
-      BaseClass.include(ConstructWith);
-
-      function BaseClass(options) {
-        this.bindCallbacks();
-        this.runInitializers(options);
-      }
-
-      return BaseClass;
-
-    })();
     State = (function(superClass) {
       extend1(State, superClass);
 
@@ -431,7 +416,7 @@
 
       return State;
 
-    })(BaseClass);
+    })(CoreObject);
     StateStore = (function(superClass) {
       extend1(StateStore, superClass);
 
@@ -525,7 +510,7 @@
 
       return StateStore;
 
-    })(BaseClass);
+    })(CoreObject);
     StateBuilder = (function(superClass) {
       var extend;
 
@@ -569,7 +554,7 @@
 
       return StateBuilder;
 
-    })(BaseClass);
+    })(CoreObject);
     isObject = _.isObject, isString = _.isString;
     Router.createState = function(name) {
       var base, length, options;
@@ -614,7 +599,7 @@
 
       return StateMatcher;
 
-    })(BaseClass);
+    })(CoreObject);
     Pattern = (function(superClass) {
       var extend;
 
@@ -680,7 +665,7 @@
 
       return Pattern;
 
-    })(BaseClass);
+    })(CoreObject);
     PatternCompiler = (function(superClass) {
       var isEnabled;
 
@@ -723,7 +708,7 @@
 
       return PatternCompiler;
 
-    })(BaseClass);
+    })(CoreObject);
 
     /* TODO Bugs with splat param */
     PathDecorator = (function(superClass) {
@@ -794,7 +779,7 @@
 
       return PathDecorator;
 
-    })(BaseClass);
+    })(CoreObject);
     Dispatcher = (function(superClass) {
       extend1(Dispatcher, superClass);
 
@@ -972,7 +957,7 @@
 
       return Dispatcher;
 
-    })(BaseClass);
+    })(CoreObject);
     ParamHelper = (function(superClass) {
       extend1(ParamHelper, superClass);
 
@@ -1004,7 +989,7 @@
 
       return ParamHelper;
 
-    })(BaseClass);
+    })(CoreObject);
     Transition = (function(superClass) {
       extend1(Transition, superClass);
 
@@ -1071,7 +1056,7 @@
 
       return Transition;
 
-    })(BaseClass);
+    })(CoreObject);
     Router.on('start', function() {
       return _.delay(function() {
         return Router.history.start();
@@ -1255,7 +1240,7 @@
 
       return History;
 
-    })(BaseClass);
+    })(CoreObject);
     Router.on('start', function() {
       return Router.linksInterceptor.start();
     });
@@ -1361,7 +1346,7 @@
 
       return LinksInterceptor;
 
-    })(BaseClass);
+    })(CoreObject);
     if (!_.isFunction(console.debug)) {
       console.debug = (function() {});
     }

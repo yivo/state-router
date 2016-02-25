@@ -1,4 +1,4 @@
-class State extends BaseClass
+class State extends CoreObject
 
   @include StateDefaultParameters
   @include StateRouteParameters

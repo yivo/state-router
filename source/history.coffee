@@ -4,7 +4,7 @@ Router.on 'start', ->
 Router.on 'stop', ->
   _.delay -> Router.history.stop()
 
-class History extends BaseClass
+class History extends CoreObject
 
   @derivePath = (obj) ->
     decodeURI((obj.pathname + obj.search).replace(/%25/g, '%2525')).replace(/^\/+/, '')

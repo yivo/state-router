@@ -1,6 +1,6 @@
-XRegExp = XRegExpAPI.XRegExp or XRegExpAPI
+XRegExp = XRegExpExports.XRegExp or XRegExpExports
 
-Router = {}
+Router = VERSION: '1.0.1'
 
 do ->
   Router.property = PropertyAccessors.ClassMembers.property
@@ -22,7 +22,6 @@ do ->
 # @include concerns/state-route-assemble.coffee
 # @include concerns/state-store-framework-features.coffee
 # @include state-router.coffee
-# @include base-class.coffee
 # @include state.coffee
 # @include state-store.coffee
 # @include state-builder.coffee

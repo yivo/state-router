@@ -11,7 +11,7 @@ Router.reAnchorURI      = /^\s*(#.*)$/
 Router.matchURIScheme = (str) ->
   str?.match?(Router.reURIScheme)?[0]
 
-class LinksInterceptor extends BaseClass
+class LinksInterceptor extends CoreObject
 
   constructor: ->
     super

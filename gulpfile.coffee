@@ -4,7 +4,7 @@ concat          = require 'gulp-concat'
 coffee          = require 'gulp-coffee'
 coffeeComments  = require 'gulp-coffee-comments'
 preprocess      = require 'gulp-preprocess'
-iife            = require 'gulp-iife'
+iife            = require 'gulp-iife-wrap'
 uglify          = require 'gulp-uglify'
 rename          = require 'gulp-rename'
 del             = require 'del'
@@ -14,17 +14,18 @@ connect         = require 'gulp-connect'
 gulp.task 'default', ['build', 'watch', 'server'], ->
 
 gulp.task 'build', ->
-  global = 'StateRouter'
+  global       = 'StateRouter'
   dependencies = [
-    {require: 'lodash',             global: '_'}
-    {require: 'jquery',             global: '$'}
-    {require: 'XRegExp',            global: 'XRegExp', argument: 'XRegExpAPI'}
-    {require: 'yess'}
+    {require: 'lodash'}
+    {require: 'jquery',               global: '$'}
+    {require: 'XRegExp',              global: 'XRegExp', argument: 'XRegExpExports'}
+    {require: 'yess',                 global: '_'}
     {require: 'coffee-concerns',      global: 'Concerns'}
     {require: 'callbacks',            global: 'Callbacks'}
     {require: 'construct-with',       global: 'ConstructWith'}
     {require: 'publisher-subscriber', global: 'PublisherSubscriber'}
     {require: 'property-accessors',   global: 'PropertyAccessors'}
+    {require: 'core-object',          global: 'CoreObject'}
   ]
 
   gulp.src('source/__manifest__.coffee')
@@ -51,8 +52,9 @@ gulp.task 'server', ->
   connect.server fallback: 'index.html'
 
 gulp.task 'coffeespec', ->
-  del.sync 'spec/**/*.js'
+  del.sync 'spec/**/*'
   gulp.src('coffeespec/**/*.coffee')
-  .pipe preprocess()
-  .pipe coffee(bare: yes)
-  .pipe gulp.dest('spec')
+    .pipe coffee(bare: yes)
+    .pipe gulp.dest('spec')
+  gulp.src('coffeespec/support/jasmine.json')
+    .pipe gulp.dest('spec/support')

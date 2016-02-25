@@ -1,4 +1,4 @@
-class Pattern extends BaseClass
+class Pattern extends CoreObject
 
   @param 'base'
   @param 'source', as: 'ownSource', required: yes

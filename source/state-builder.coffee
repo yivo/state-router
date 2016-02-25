@@ -1,4 +1,4 @@
-class StateBuilder extends BaseClass
+class StateBuilder extends CoreObject
 
   build: (name, base, data) ->
     if base

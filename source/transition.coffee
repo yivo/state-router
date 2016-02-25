@@ -1,4 +1,4 @@
-class Transition extends BaseClass
+class Transition extends CoreObject
 
   @param 'fromState'
   @param 'fromParams'

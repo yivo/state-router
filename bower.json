@@ -1,6 +1,6 @@
 {
   "name": "state-router",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "homepage": "https://github.com/yivo/state-router",
   "authors": [
     "Yaroslav Konoplov <yaroslav@inbox.com>"
@@ -17,14 +17,15 @@
     "gulpfile.*"
   ],
   "dependencies": {
-    "coffee-concerns": "1.x",
-    "construct-with": "1.x",
-    "ize": "1.x",
+    "coffee-concerns": "^1.0.0",
+    "core-object": "^1.0.0",
+    "construct-with": "^1.0.0",
     "jquery": "^2.1.4",
     "lodash": "^3.10.0",
-    "property-accessors": "1.x",
-    "publisher-subscriber": "1.x",
+    "property-accessors": "yivo/callbacks",
+    "publisher-subscriber": "^1.0.0",
     "xregexp": "^2.0.0",
-    "yess": "1.x"
+    "yess": "^1.0.2",
+    "callbacks": "yivo/callbacks"
   }
 }

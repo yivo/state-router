@@ -1,4 +1,4 @@
-class ParamHelper extends BaseClass
+class ParamHelper extends CoreObject
 
   reArrayIndex: /^[0-9]+$/
 
