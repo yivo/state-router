@@ -10,25 +10,25 @@
 
   # AMD
   if typeof define is 'function' and define.amd
-    define ['lodash', 'jquery', 'XRegExp', 'coffee-concerns', 'callbacks', 'construct-with', 'publisher-subscriber', 'property-accessors', 'yess', 'exports'], (_, $, XRegExpAPI, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors) ->
-      root.StateRouter = factory(root, _, $, XRegExpAPI, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors)
+    define ['jquery', 'XRegExp', 'yess', 'coffee-concerns', 'callbacks', 'construct-with', 'publisher-subscriber', 'property-accessors', 'core-object', 'lodash', 'exports'], ($, XRegExpExports, _, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors, CoreObject) ->
+      root.StateRouter = factory(root, $, XRegExpExports, _, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors, CoreObject)
 
   # CommonJS
   else if typeof module is 'object' and module isnt null and
           module.exports? and typeof module.exports is 'object'
-    module.exports = factory(root, require('lodash'), require('jquery'), require('XRegExp'), require('coffee-concerns'), require('callbacks'), require('construct-with'), require('publisher-subscriber'), require('property-accessors'), require('yess'))
+    module.exports = factory(root, require('jquery'), require('XRegExp'), require('yess'), require('coffee-concerns'), require('callbacks'), require('construct-with'), require('publisher-subscriber'), require('property-accessors'), require('core-object'), require('lodash'))
 
   # Browser and the rest
   else
-    root.StateRouter = factory(root, root._, root.$, root.XRegExp, root.Concerns, root.Callbacks, root.ConstructWith, root.PublisherSubscriber, root.PropertyAccessors)
+    root.StateRouter = factory(root, root.$, root.XRegExp, root._, root.Concerns, root.Callbacks, root.ConstructWith, root.PublisherSubscriber, root.PropertyAccessors, root.CoreObject)
 
   # No return value
   return
 
-)((__root__, _, $, XRegExpAPI, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors) ->
-  XRegExp = XRegExpAPI.XRegExp or XRegExpAPI
+)((__root__, $, XRegExpExports, _, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors, CoreObject) ->
+  XRegExp = XRegExpExports.XRegExp or XRegExpExports
   
-  Router = {}
+  Router = VERSION: '1.0.1'
   
   do ->
     Router.property = PropertyAccessors.ClassMembers.property
@@ -241,18 +241,7 @@
     Class = Router.controllerLookup(Class) if typeof Class is 'string'
     Class
   
-  class BaseClass
-  
-    @include Callbacks
-    @include PropertyAccessors
-    @include PublisherSubscriber
-    @include ConstructWith
-  
-    constructor: (options) ->
-      @bindCallbacks()
-      @runInitializers(options)
-  
-  class State extends BaseClass
+  class State extends CoreObject
   
     @include StateDefaultParameters
     @include StateRouteParameters
@@ -306,7 +295,7 @@
       ++depth while state = state.base
       depth
   
-  class StateStore extends BaseClass
+  class StateStore extends CoreObject
   
     @include StateStoreFrameworkFeatures
   
@@ -368,7 +357,7 @@
         Router
       callback(thisApi)
   
-  class StateBuilder extends BaseClass
+  class StateBuilder extends CoreObject
   
     build: (name, base, data) ->
       if base
@@ -408,7 +397,7 @@
   
     Router.stateBuilder.build(name, base, options)
   
-  class StateMatcher extends BaseClass
+  class StateMatcher extends CoreObject
   
     match: (route) ->
       states = Router.states
@@ -424,7 +413,7 @@
   
       match
   
-  class Pattern extends BaseClass
+  class Pattern extends CoreObject
   
     @param 'base'
     @param 'source', as: 'ownSource', required: yes
@@ -464,7 +453,7 @@
     @fromRegexSource: (source, options) ->
       new this(extend({}, options, {source}))
   
-  class PatternCompiler extends BaseClass
+  class PatternCompiler extends CoreObject
   
     rsQueryString:  '(?:\\?(?<query>([\\s\\S]*)))?'
     reQueryString:  XRegExp(this::rsQueryString + '$')
@@ -493,7 +482,7 @@
       source
   
   # TODO Bugs with splat param
-  class PathDecorator extends BaseClass
+  class PathDecorator extends CoreObject
   
     @params 'paramPreprocessor', 'reEscape', 'escapeReplacement'
   
@@ -539,7 +528,7 @@
     escape: (path) ->
       path.replace(@reEscape, @escapeReplacement)
   
-  class Dispatcher extends BaseClass
+  class Dispatcher extends CoreObject
   
     dispatch: (transition) ->
       work = =>
@@ -685,7 +674,7 @@
       else
         _.isEqual(a, b)
   
-  class ParamHelper extends BaseClass
+  class ParamHelper extends CoreObject
   
     reArrayIndex: /^[0-9]+$/
   
@@ -704,7 +693,7 @@
     decode: (param, value) ->
       decodeURIComponent(value)
   
-  class Transition extends BaseClass
+  class Transition extends CoreObject
   
     @param 'fromState'
     @param 'fromParams'
@@ -751,7 +740,7 @@
   Router.on 'stop', ->
     _.delay -> Router.history.stop()
   
-  class History extends BaseClass
+  class History extends CoreObject
   
     @derivePath = (obj) ->
       decodeURI((obj.pathname + obj.search).replace(/%25/g, '%2525')).replace(/^\/+/, '')
@@ -899,7 +888,7 @@
   Router.matchURIScheme = (str) ->
     str?.match?(Router.reURIScheme)?[0]
   
-  class LinksInterceptor extends BaseClass
+  class LinksInterceptor extends CoreObject
   
     constructor: ->
       super
