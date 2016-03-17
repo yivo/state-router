@@ -37,7 +37,7 @@
     var Dispatcher, History, LinksInterceptor, ParamHelper, PathDecorator, Pattern, PatternCompiler, Router, State, StateBuilder, StateDefaultParameters, StateMatcher, StateRouteAssemble, StateRouteParameters, StateStore, StateStoreFrameworkFeatures, Transition, XRegExp, isObject, isString;
     XRegExp = XRegExpExports.XRegExp || XRegExpExports;
     Router = {
-      VERSION: '1.0.2'
+      VERSION: '1.0.3'
     };
     (function() {
       var property;

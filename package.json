@@ -1,6 +1,6 @@
 {
   "name": "state-router",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "",
   "main": "build/state-router.js",
   "scripts": {
@@ -32,7 +32,7 @@
     "lodash": "^4.5.1",
     "property-accessors": "yivo/property-accessors",
     "publisher-subscriber": "^1.0.0",
-    "xregexp": "^2.0.0",
+    "xregexp": "^3.1.0",
     "yess": "^1.0.0",
     "core-object": "^1.0.0",
     "callbacks": "yivo/callbacks"

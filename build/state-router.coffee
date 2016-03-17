@@ -28,7 +28,7 @@
 )((__root__, $, XRegExpExports, _, Concerns, Callbacks, ConstructWith, PublisherSubscriber, PropertyAccessors, CoreObject) ->
   XRegExp = XRegExpExports.XRegExp or XRegExpExports
   
-  Router = VERSION: '1.0.2'
+  Router = VERSION: '1.0.3'
   
   do ->
     Router.property = PropertyAccessors.ClassMembers.property
