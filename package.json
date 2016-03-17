@@ -1,6 +1,6 @@
 {
   "name": "state-router",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "",
   "main": "build/state-router.js",
   "scripts": {
@@ -29,7 +29,7 @@
     "coffee-concerns": "^1.0.0",
     "construct-with": "^1.0.0",
     "jquery": "^2.1.4",
-    "lodash": "^3.10.0",
+    "lodash": "^4.5.1",
     "property-accessors": "yivo/property-accessors",
     "publisher-subscriber": "^1.0.0",
     "xregexp": "^2.0.0",

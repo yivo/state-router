@@ -37,7 +37,7 @@
     var Dispatcher, History, LinksInterceptor, ParamHelper, PathDecorator, Pattern, PatternCompiler, Router, State, StateBuilder, StateDefaultParameters, StateMatcher, StateRouteAssemble, StateRouteParameters, StateStore, StateStoreFrameworkFeatures, Transition, XRegExp, isObject, isString;
     XRegExp = XRegExpExports.XRegExp || XRegExpExports;
     Router = {
-      VERSION: '1.0.1'
+      VERSION: '1.0.2'
     };
     (function() {
       var property;
@@ -45,7 +45,8 @@
       property = function(name, getter) {
         return Router.property(name, {
           memo: true,
-          readonly: true
+          readonly: true,
+          silent: true
         }, getter);
       };
       property('history', function() {

@@ -1,10 +1,10 @@
 XRegExp = XRegExpExports.XRegExp or XRegExpExports
 
-Router = VERSION: '1.0.1'
+Router = VERSION: '1.0.2'
 
 do ->
   Router.property = PropertyAccessors.ClassMembers.property
-  property        = (name, getter) -> Router.property(name, memo: true, readonly: true, getter)
+  property        = (name, getter) -> Router.property(name, memo: yes, readonly: yes, silent: yes, getter)
 
   property 'history',          -> new @History(_.result(this, 'historyOptions'))
   property 'linksInterceptor', -> new @LinksInterceptor(_.result(this, 'linksInterceptorOptions'))

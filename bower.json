@@ -1,6 +1,6 @@
 {
   "name": "state-router",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "homepage": "https://github.com/yivo/state-router",
   "authors": [
     "Yaroslav Konoplov <yaroslav@inbox.com>"
@@ -21,8 +21,8 @@
     "core-object": "^1.0.0",
     "construct-with": "^1.0.0",
     "jquery": "^2.1.4",
-    "lodash": "^3.10.0",
-    "property-accessors": "yivo/callbacks",
+    "lodash": "^4.5.1",
+    "property-accessors": "^1.0.6",
     "publisher-subscriber": "^1.0.0",
     "xregexp": "^2.0.0",
     "yess": "^1.0.2",
